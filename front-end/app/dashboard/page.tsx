@@ -202,12 +202,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <main className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-center py-6 gap-4 sm:gap-0">
             <div className="flex items-center w-full sm:w-auto justify-center sm:justify-start">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-linear-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg shrink-0">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-4 sm:space-x-6 w-full sm:w-auto justify-between sm:justify-end mt-4 sm:mt-0">
               <button
                 onClick={() => setShowModal(true)}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base"
+                className="bg-linear-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base"
               >
                 Cadastrar Paciente
               </button>
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                 <p className="text-gray-600">Nenhum paciente cadastrado ainda.</p>
                 <button
                   onClick={() => setShowModal(true)}
-                  className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold"
+                  className="mt-4 px-4 py-2 bg-linear-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold"
                 >
                   Cadastrar Primeiro Paciente
                 </button>
@@ -408,7 +408,7 @@ export default function DashboardPage() {
 
                 <button
                   onClick={closeModal}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all"
+                  className="w-full bg-linear-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all"
                 >
                   Fechar
                 </button>
@@ -529,7 +529,7 @@ export default function DashboardPage() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                      className="flex-1 bg-linear-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? 'Cadastrando...' : 'Cadastrar Paciente'}
