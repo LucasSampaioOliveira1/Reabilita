@@ -1,5 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
-import { UserRole } from '../../common/enums/user-role.enum';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -9,6 +8,7 @@ export class UsersRepository {
     name: true,
     email: true,
     role: true,
+    loginCode: true,
     createdAt: true,
     updatedAt: true,
   } as const;
@@ -19,7 +19,8 @@ export class UsersRepository {
     name: string;
     email: string;
     passwordHash: string;
-    role: UserRole;
+    role: string;
+    loginCode?: string;
   }) {
     return this.prisma.user.create({
       data,
@@ -46,6 +47,12 @@ export class UsersRepository {
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
+    });
+  }
+
+  findByLoginCode(loginCode: string) {
+    return this.prisma.user.findUnique({
+      where: { loginCode },
     });
   }
 }

@@ -1,20 +1,26 @@
-﻿import { IsInt, IsNotEmpty, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class CreatePatientDto {
   @IsString()
   @IsNotEmpty()
-  userId!: string;
+  name!: string;
 
-  @IsInt()
-  @Min(1)
-  age!: number;
+  @IsString()
+  @IsNotEmpty()
+  cpf!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  address!: string;
+
+  @IsDateString()
+  birthDate!: string;
+
+  @IsString()
+  @MinLength(6)
+  password!: string;
 
   @IsString()
   @IsNotEmpty()
   condition!: string;
-
-  @IsInt()
-  @Min(1)
-  @Max(3)
-  phase!: number;
 }

@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -6,6 +6,9 @@ export class PatientsRepository {
   private readonly patientSelect = {
     id: true,
     userId: true,
+    cpf: true,
+    address: true,
+    birthDate: true,
     age: true,
     condition: true,
     phase: true,
@@ -17,6 +20,7 @@ export class PatientsRepository {
         name: true,
         email: true,
         role: true,
+        loginCode: true,
       },
     },
   } as const;
@@ -25,6 +29,9 @@ export class PatientsRepository {
 
   create(data: {
     userId: string;
+    cpf: string;
+    address: string;
+    birthDate: Date;
     age: number;
     condition: string;
     phase: number;
@@ -54,6 +61,13 @@ export class PatientsRepository {
   findByUserId(userId: string) {
     return this.prisma.patient.findUnique({
       where: { userId },
+      select: this.patientSelect,
+    });
+  }
+
+  findByCpf(cpf: string) {
+    return this.prisma.patient.findUnique({
+      where: { cpf },
       select: this.patientSelect,
     });
   }

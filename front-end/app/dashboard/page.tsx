@@ -1,6 +1,5 @@
 'use client';
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -27,15 +26,132 @@ function getUserFromStorage() {
   }
 }
 
+interface Patient {
+  id: string;
+  cpf: string;
+  address: string;
+  birthDate: string;
+  age: number;
+  condition: string;
+  phase: number;
+  user: {
+    name: string;
+    loginCode: string;
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user] = useState<{ name: string; role: string } | null>(getUserFromStorage);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [createdLoginCode, setCreatedLoginCode] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    cpf: '',
+    address: '',
+    birthDate: '',
+    password: '',
+    condition: 'Fratura de Rádio Distal'
+  });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchPatients = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPatients(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pacientes:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
       router.push('/');
+      return;
     }
+
+    const loadPatients = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPatients(data);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar pacientes:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatients();
   }, [user, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao cadastrar paciente');
+      }
+
+      setCreatedLoginCode(data.loginCode);
+      setFormData({
+        name: '',
+        cpf: '',
+        address: '',
+        birthDate: '',
+        password: '',
+        condition: 'Fratura de Rádio Distal'
+      });
+      fetchPatients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao cadastrar paciente');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -43,25 +159,55 @@ export default function DashboardPage() {
     router.push('/');
   };
 
+  const closeModal = () => {
+    setShowModal(false);
+    setCreatedLoginCode(null);
+    setError('');
+    setFormData({
+      name: '',
+      cpf: '',
+      address: '',
+      birthDate: '',
+      password: '',
+      condition: 'Fratura de Rádio Distal'
+    });
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getAvatarColor = (index: number) => {
+    const colors = [
+      { bg: 'bg-blue-100', text: 'text-blue-600' },
+      { bg: 'bg-orange-100', text: 'text-orange-600' },
+      { bg: 'bg-green-100', text: 'text-green-600' },
+      { bg: 'bg-purple-100', text: 'text-purple-600' },
+      { bg: 'bg-pink-100', text: 'text-pink-600' },
+      { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+    ];
+    return colors[index % colors.length];
+  };
+
+  const totalPatients = patients.length;
+  const inProgressPatients = patients.filter(p => p.phase < 3).length;
+  const completedPatients = patients.filter(p => p.phase >= 3).length;
+
   if (!user) {
-    return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-700 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Carregando...</p>
-        </div>
-      </main>
-    );
+    return null;
   }
 
   return (
- <main className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50">
-      {/* Header */}
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-center py-6 gap-4 sm:gap-0">
             <div className="flex items-center w-full sm:w-auto justify-center sm:justify-start">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-linear-to-br from-primary to-secondary rounded-xl mb-0 shadow-lg shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg shrink-0">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
@@ -73,19 +219,22 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center space-x-4 sm:space-x-6 w-full sm:w-auto justify-between sm:justify-end mt-4 sm:mt-0">
-              <button className="bg-linear-to-r from-primary to-secondary text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base">
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base"
+              >
                 Cadastrar Paciente
               </button>
-              
+
               <div className="flex items-center space-x-3 sm:space-x-4 border-l border-gray-200 pl-4 sm:pl-6 shrink-0">
                 <div className="text-right hidden lg:block">
                   <p className="text-sm font-bold text-gray-900 leading-none">{user.name}</p>
                   <p className="text-xs text-gray-500 mt-1">Fisioterapeuta</p>
                 </div>
-                <div className="w-10 h-10 bg-primary/10 text-primary font-bold flex items-center justify-center rounded-full shrink-0">
-                  {user.name.substring(0, 2).toUpperCase()}
+                <div className="w-10 h-10 bg-blue-100 text-blue-600 font-bold flex items-center justify-center rounded-full shrink-0">
+                  {getInitials(user.name)}
                 </div>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 hover:shadow-lg transition-all duration-200 shrink-0"
                   title="Sair da conta"
@@ -101,16 +250,14 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Métricas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total de Pacientes</p>
-                <p className="text-3xl font-bold text-gray-900">24</p>
-                <p className="text-sm text-green-600 mt-1">+3 este mês</p>
+                <p className="text-3xl font-bold text-gray-900">{totalPatients}</p>
+                <p className="text-sm text-green-600 mt-1">Cadastrados</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,8 +271,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-                <p className="text-3xl font-bold text-orange-600">18</p>
-                <p className="text-sm text-orange-600 mt-1">75% do total</p>
+                <p className="text-3xl font-bold text-orange-600">{inProgressPatients}</p>
+                <p className="text-sm text-orange-600 mt-1">
+                  {totalPatients > 0 ? Math.round((inProgressPatients / totalPatients) * 100) : 0}% do total
+                </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,8 +288,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Concluídos</p>
-                <p className="text-3xl font-bold text-green-600">6</p>
-                <p className="text-sm text-green-600 mt-1">25% taxa de sucesso</p>
+                <p className="text-3xl font-bold text-green-600">{completedPatients}</p>
+                <p className="text-sm text-green-600 mt-1">
+                  {totalPatients > 0 ? Math.round((completedPatients / totalPatients) * 100) : 0}% do total
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,160 +302,245 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Seção de Pacientes */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Pacientes Ativos</h2>
-              <button className="text-primary hover:text-secondary font-medium">
-                Ver todos
-              </button>
             </div>
           </div>
           <div className="p-6">
-            <div className="space-y-4">
-              {/* Paciente 1 */}
-              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  {/* Info */}
-                  <div className="flex items-center space-x-4 min-w-50">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-blue-600 font-semibold">MA</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">Maria Andrade</h3>
-                      <p className="text-sm text-gray-600">Fratura de punho • Fase 2</p>
-                    </div>
-                  </div>
-                  
-                  {/* Metrics */}
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
-                      <span className="text-gray-500">Adesão:</span>
-                      <span className="font-semibold text-green-600">85%</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
-                      <span className="text-gray-500">Dor (EVA):</span>
-                      <span className="font-semibold text-yellow-600">4/10</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
-                      <span className="text-gray-500">Freq:</span>
-                      <span className="font-semibold text-gray-900">3x/sem</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2 sm:justify-end">
-                    <Link href="/patient/1" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </Link>
-                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all relative" title="Abrir Chat (Registro de interações)">
-                      <span className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Carregando pacientes...</p>
               </div>
-
-              {/* Paciente 2 */}
-              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  {/* Info */}
-                  <div className="flex items-center space-x-4 min-w-50">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-orange-600 font-semibold">JS</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">João Silva</h3>
-                      <p className="text-sm text-gray-600">Fratura de punho • Fase 1</p>
-                    </div>
-                  </div>
-                  
-                  {/* Metrics */}
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
-                      <span className="text-gray-500">Adesão:</span>
-                      <span className="font-semibold text-red-600">60%</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
-                      <span className="text-gray-500">Dor (EVA):</span>
-                      <span className="font-semibold text-red-600">7/10</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
-                      <span className="text-gray-500">Freq:</span>
-                      <span className="font-semibold text-gray-900">2x/sem</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2 sm:justify-end">
-                    <Link href="/patient/2" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </Link>
-                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Abrir Chat (Registro de interações)">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+            ) : patients.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Nenhum paciente cadastrado ainda.</p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold"
+                >
+                  Cadastrar Primeiro Paciente
+                </button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {patients.map((patient, index) => {
+                  const avatarColor = getAvatarColor(index);
+                  const initials = getInitials(patient.user.name);
 
-              {/* Paciente 3 */}
-              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  {/* Info */}
-                  <div className="flex items-center space-x-4 min-w-50">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-green-600 font-semibold">CP</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">Carla Pereira</h3>
-                      <p className="text-sm text-gray-600">Fratura de punho • Fase 3</p>
-                    </div>
-                  </div>
-                  
-                  {/* Metrics */}
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-green-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
-                      <span className="text-gray-500">Adesão:</span>
-                      <span className="font-semibold text-green-600">95%</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-green-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
-                      <span className="text-gray-500">Dor (EVA):</span>
-                      <span className="font-semibold text-green-600">1/10</span>
-                    </div>
-                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
-                      <span className="text-gray-500">Freq:</span>
-                      <span className="font-semibold text-gray-900">5x/sem</span>
-                    </div>
-                  </div>
+                  return (
+                    <div key={patient.id} className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
+                      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                        <div className="flex items-center space-x-4 min-w-50">
+                          <div className={`w-12 h-12 ${avatarColor.bg} rounded-full flex items-center justify-center shrink-0`}>
+                            <span className={`${avatarColor.text} font-semibold`}>{initials}</span>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-gray-900">{patient.user.name}</h3>
+                            <p className="text-sm text-gray-600">{patient.condition} • Fase {patient.phase}</p>
+                          </div>
+                        </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2 sm:justify-end">
-                    <Link href="/patient/3" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </Link>
-                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Abrir Chat (Registro de interações)">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2" title="Código de Login">
+                            <span className="text-gray-500">Login:</span>
+                            <span className="font-semibold text-blue-600 font-mono">{patient.user.loginCode}</span>
+                          </div>
+                          <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2" title="Idade">
+                            <span className="text-gray-500">Idade:</span>
+                            <span className="font-semibold text-gray-900">{patient.age} anos</span>
+                          </div>
+                          <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2" title="CPF">
+                            <span className="text-gray-500">CPF:</span>
+                            <span className="font-semibold text-gray-900">{patient.cpf}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 sm:justify-end">
+                          <button className="p-2 bg-white border border-gray-200 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </button>
+                          <button className="p-2 bg-white border border-gray-200 text-green-600 hover:bg-green-600 hover:text-white shadow-sm rounded-lg transition-all" title="Editar">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button className="p-2 bg-white border border-gray-200 text-red-600 hover:bg-red-600 hover:text-white shadow-sm rounded-lg transition-all" title="Excluir">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {createdLoginCode ? (
+              <div className="text-center">
+                <div className="mb-6">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Paciente Cadastrado!</h3>
+                  <p className="text-slate-600">O código de login foi gerado com sucesso.</p>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                  <p className="text-sm text-slate-600 mb-2">Código de Login:</p>
+                  <p className="text-4xl font-bold text-blue-700 font-mono tracking-wider">{createdLoginCode}</p>
+                  <p className="text-sm text-slate-500 mt-3">Anote este código. O paciente usará para fazer login.</p>
+                </div>
+
+                <button
+                  onClick={closeModal}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-2xl font-bold text-slate-900 mb-6">Cadastrar Novo Paciente</h3>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Nome Completo *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nome do paciente"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        CPF *
+                      </label>
+                      <input
+                        type="text"
+                        name="cpf"
+                        value={formData.cpf}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Data de Nascimento *
+                      </label>
+                      <input
+                        type="date"
+                        name="birthDate"
+                        value={formData.birthDate}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Endereço *
+                    </label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Rua, número, bairro, cidade"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Condição *
+                    </label>
+                    <input
+                      type="text"
+                      name="condition"
+                      value={formData.condition}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Senha de Acesso *
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Esta senha será usada junto com o código de login gerado.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 bg-slate-200 text-slate-700 py-3 px-4 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Cadastrando...' : 'Cadastrar Paciente'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -14,6 +14,7 @@ model User {
   email            String    @unique
   passwordHash     String
   role             String    @default("patient")
+  loginCode        String?   @unique
   patientProfile   Patient?
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -24,15 +25,19 @@ model User {
 model Patient {
   id        String    @id @default(cuid())
   userId    String    @unique
+  cpf       String    @unique
+  address   String
+  birthDate DateTime
   age       Int
   condition String
-  phase     Int
+  phase     Int       @default(1)
   sessions  Session[]
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([phase])
+  @@index([cpf])
 }
 
 model Exercise {

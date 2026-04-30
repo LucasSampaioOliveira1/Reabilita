@@ -1,7 +1,31 @@
-﻿import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { hash } from 'bcrypt';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { PatientsRepository } from './repositories/patients.repository';
+
+function generateLoginCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function calculateAge(birthDate: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
+}
 
 @Injectable()
 export class PatientsService {
@@ -11,19 +35,48 @@ export class PatientsService {
   ) {}
 
   async create(dto: CreatePatientDto) {
-    const user = await this.usersRepository.findById(dto.userId);
+    const existingCpf = await this.patientsRepository.findByCpf(dto.cpf);
 
-    if (!user) {
-      throw new NotFoundException('Usuário vinculado ao paciente não encontrado.');
+    if (existingCpf) {
+      throw new ConflictException('CPF já cadastrado.');
     }
 
-    const existingPatient = await this.patientsRepository.findByUserId(dto.userId);
+    let loginCode = generateLoginCode();
+    let existingLogin = await this.usersRepository.findByLoginCode(
+      loginCode,
+    );
 
-    if (existingPatient) {
-      throw new ConflictException('Este usuário já possui cadastro de paciente.');
+    while (existingLogin) {
+      loginCode = generateLoginCode();
+      existingLogin = await this.usersRepository.findByLoginCode(loginCode);
     }
 
-    return this.patientsRepository.create(dto);
+    const passwordHash = await hash(dto.password, 10);
+    const birthDate = new Date(dto.birthDate);
+    const age = calculateAge(birthDate);
+
+    const user = await this.usersRepository.create({
+      name: dto.name,
+      email: `patient_${loginCode}@reabilita.com`,
+      passwordHash,
+      role: 'patient',
+      loginCode,
+    });
+
+    const patient = await this.patientsRepository.create({
+      userId: user.id,
+      cpf: dto.cpf,
+      address: dto.address,
+      birthDate,
+      age,
+      condition: dto.condition,
+      phase: 1,
+    });
+
+    return {
+      ...patient,
+      loginCode,
+    };
   }
 
   findAll() {
