@@ -1,4 +1,4 @@
-﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
@@ -29,6 +29,12 @@ export class AuthService {
 
     if (!passwordMatches) {
       throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    if (user.role !== 'physio') {
+      throw new UnauthorizedException(
+        'Acesso permitido apenas para fisioterapeutas.',
+      );
     }
 
     return this.issueToken(user);
