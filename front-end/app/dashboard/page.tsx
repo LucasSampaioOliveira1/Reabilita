@@ -1,5 +1,6 @@
 'use client';
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -163,74 +164,141 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="space-y-4">
               {/* Paciente 1 */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold">MA</span>
+              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  {/* Info */}
+                  <div className="flex items-center space-x-4 min-w-50">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-blue-600 font-semibold">MA</span>
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Maria Andrade</h3>
+                      <p className="text-sm text-gray-600">Fratura de punho • Fase 2</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Maria Andrade</h3>
-                    <p className="text-sm text-gray-600">Fratura de punho - Fase 2</p>
+                  
+                  {/* Metrics */}
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
+                      <span className="text-gray-500">Adesão:</span>
+                      <span className="font-semibold text-green-600">85%</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
+                      <span className="text-gray-500">Dor (EVA):</span>
+                      <span className="font-semibold text-yellow-600">4/10</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
+                      <span className="text-gray-500">Freq:</span>
+                      <span className="font-semibold text-gray-900">3x/sem</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-green-600">Adesão: 85%</p>
-                    <p className="text-xs text-gray-500">Última sessão: ontem</p>
+
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2 sm:justify-end">
+                    <Link href="/patient/1" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </Link>
+                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all relative" title="Abrir Chat (Registro de interações)">
+                      <span className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </button>
                   </div>
-                  <button className="text-primary hover:text-secondary">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
                 </div>
               </div>
 
               {/* Paciente 2 */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                    <span className="text-orange-600 font-semibold">JS</span>
+              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  {/* Info */}
+                  <div className="flex items-center space-x-4 min-w-50">
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-orange-600 font-semibold">JS</span>
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">João Silva</h3>
+                      <p className="text-sm text-gray-600">Fratura de punho • Fase 1</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">João Silva</h3>
-                    <p className="text-sm text-gray-600">Fratura de punho - Fase 1</p>
+                  
+                  {/* Metrics */}
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
+                      <span className="text-gray-500">Adesão:</span>
+                      <span className="font-semibold text-red-600">60%</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
+                      <span className="text-gray-500">Dor (EVA):</span>
+                      <span className="font-semibold text-red-600">7/10</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
+                      <span className="text-gray-500">Freq:</span>
+                      <span className="font-semibold text-gray-900">2x/sem</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-yellow-600">Adesão: 60%</p>
-                    <p className="text-xs text-gray-500">Última sessão: 2 dias atrás</p>
+
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2 sm:justify-end">
+                    <Link href="/patient/2" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </Link>
+                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Abrir Chat (Registro de interações)">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </button>
                   </div>
-                  <button className="text-primary hover:text-secondary">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
                 </div>
               </div>
 
               {/* Paciente 3 */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-green-600 font-semibold">CP</span>
+              <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  {/* Info */}
+                  <div className="flex items-center space-x-4 min-w-50">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-green-600 font-semibold">CP</span>
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Carla Pereira</h3>
+                      <p className="text-sm text-gray-600">Fratura de punho • Fase 3</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Carla Pereira</h3>
-                    <p className="text-sm text-gray-600">Fratura de punho - Fase 3</p>
+                  
+                  {/* Metrics */}
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-green-200 shadow-xs flex items-center gap-2" title="Adesão aos exercícios">
+                      <span className="text-gray-500">Adesão:</span>
+                      <span className="font-semibold text-green-600">95%</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-green-200 shadow-xs flex items-center gap-2" title="Último registro de dor (0-10)">
+                      <span className="text-gray-500">Dor (EVA):</span>
+                      <span className="font-semibold text-green-600">1/10</span>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs flex items-center gap-2" title="Frequência semanal">
+                      <span className="text-gray-500">Freq:</span>
+                      <span className="font-semibold text-gray-900">5x/sem</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-green-600">Adesão: 95%</p>
-                    <p className="text-xs text-gray-500">Última sessão: hoje</p>
+
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2 sm:justify-end">
+                    <Link href="/patient/3" className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </Link>
+                    <button className="p-2 bg-white border border-gray-200 text-primary hover:bg-primary hover:text-white shadow-sm rounded-lg transition-all" title="Abrir Chat (Registro de interações)">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </button>
                   </div>
-                  <button className="text-primary hover:text-secondary">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
                 </div>
               </div>
             </div>
