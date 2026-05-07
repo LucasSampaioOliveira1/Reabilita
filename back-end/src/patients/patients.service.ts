@@ -117,7 +117,7 @@ export class PatientsService {
       ? await hash(dto.password, 10)
       : undefined;
     const status =
-      dto.phase !== undefined ? getStatusByPhase(dto.phase) : undefined;
+      dto.status ?? (dto.phase !== undefined ? getStatusByPhase(dto.phase) : undefined);
 
     return this.patientsRepository.updateById(id, {
       userName: dto.name,

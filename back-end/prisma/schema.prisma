@@ -11,6 +11,7 @@ datasource db {
 enum PatientStatus {
   IN_PROGRESS
   COMPLETED
+  DEMITIDO
 }
 
 model User {

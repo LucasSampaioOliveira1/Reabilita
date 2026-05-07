@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -42,6 +43,10 @@ export class UpdatePatientDto {
   @IsInt()
   @Min(1)
   phase?: number;
+
+  @IsOptional()
+  @IsIn(['IN_PROGRESS', 'COMPLETED', 'DEMITIDO'])
+  status?: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
 
   @IsOptional()
   @IsString()

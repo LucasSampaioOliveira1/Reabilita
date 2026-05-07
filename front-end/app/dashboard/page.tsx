@@ -35,7 +35,7 @@ interface Patient {
   age: number;
   condition: string;
   phase: number;
-  status: 'IN_PROGRESS' | 'COMPLETED';
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
   user: {
     name: string;
     loginCode: string;
@@ -60,6 +60,7 @@ interface EditPatientFormData {
   birthDate: string;
   condition: string;
   phase: number;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
   password: string;
 }
 
@@ -100,6 +101,7 @@ export default function DashboardPage() {
     birthDate: '',
     condition: '',
     phase: 1,
+    status: 'IN_PROGRESS',
     password: ''
   });
   const [error, setError] = useState('');
@@ -266,6 +268,7 @@ export default function DashboardPage() {
       birthDate: formatDateForInput(patient.birthDate),
       condition: patient.condition,
       phase: patient.phase,
+      status: patient.status,
       password: ''
     });
     setEditError('');
@@ -285,6 +288,7 @@ export default function DashboardPage() {
       birthDate: '',
       condition: '',
       phase: 1,
+      status: 'IN_PROGRESS',
       password: ''
     });
     setShowEditPassword(false);
@@ -377,6 +381,7 @@ export default function DashboardPage() {
   const totalPatients = patients.length;
   const inProgressPatients = patients.filter(p => p.status === 'IN_PROGRESS').length;
   const completedPatients = patients.filter(p => p.status === 'COMPLETED').length;
+  const dismissedPatients = patients.filter(p => p.status === 'DEMITIDO').length;
   const normalizedFilterValue = filterValue.trim().toLowerCase();
   const normalizedCpfFilter = filterValue.replace(/\D/g, '');
   const filteredPatients = patients.filter((patient) => {
@@ -453,7 +458,7 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <div className="flex items-center justify-between">
               <div>
@@ -498,6 +503,23 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-[#E5F5FF] rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-[#096196]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#F4D5D5]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#8F2F2F]">Demitidos</p>
+                <p className="text-3xl font-bold text-[#B91C1C]">{dismissedPatients}</p>
+                <p className="text-sm text-[#B91C1C] mt-1">
+                  {totalPatients > 0 ? Math.round((dismissedPatients / totalPatients) * 100) : 0}% do total
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-[#B91C1C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
             </div>
@@ -577,10 +599,16 @@ export default function DashboardPage() {
                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                                   patient.status === 'COMPLETED'
                                     ? 'bg-green-100 text-green-700'
-                                    : 'bg-yellow-100 text-yellow-700'
+                                    : patient.status === 'DEMITIDO'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-yellow-100 text-yellow-700'
                                 }`}
                               >
-                                {patient.status === 'COMPLETED' ? 'Finalizado' : 'Em andamento'}
+                                {patient.status === 'COMPLETED'
+                                  ? 'Finalizado'
+                                  : patient.status === 'DEMITIDO'
+                                    ? 'Demitido'
+                                    : 'Em andamento'}
                               </span>
                             </div>
                           </div>
@@ -923,6 +951,22 @@ export default function DashboardPage() {
                   <option value={1}>Fase 1</option>
                   <option value={2}>Fase 2</option>
                   <option value={3}>Fase 3</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Status do Paciente *
+                </label>
+                <select
+                  name="status"
+                  value={editFormData.status}
+                  onChange={handleEditChange}
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                >
+                  <option value="IN_PROGRESS">Em andamento</option>
+                  <option value="COMPLETED">Finalizado</option>
+                  <option value="DEMITIDO">Demitido</option>
                 </select>
               </div>
 
