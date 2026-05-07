@@ -63,6 +63,8 @@ interface DeletePatientTarget {
   name: string;
 }
 
+type PatientFilterField = 'name' | 'login' | 'cpf';
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user] = useState<{ name: string; role: string } | null>(getUserFromStorage);
@@ -73,6 +75,8 @@ export default function DashboardPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [deletePatientTarget, setDeletePatientTarget] = useState<DeletePatientTarget | null>(null);
+  const [filterField, setFilterField] = useState<PatientFilterField>('name');
+  const [filterValue, setFilterValue] = useState('');
   const [createdLoginCode, setCreatedLoginCode] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePatientFormData>({
     name: '',
@@ -352,6 +356,27 @@ export default function DashboardPage() {
   const totalPatients = patients.length;
   const inProgressPatients = patients.filter(p => p.phase < 3).length;
   const completedPatients = patients.filter(p => p.phase >= 3).length;
+  const normalizedFilterValue = filterValue.trim().toLowerCase();
+  const normalizedCpfFilter = filterValue.replace(/\D/g, '');
+  const filteredPatients = patients.filter((patient) => {
+    if (!normalizedFilterValue) {
+      return true;
+    }
+
+    if (filterField === 'name') {
+      return patient.user.name.toLowerCase().includes(normalizedFilterValue);
+    }
+
+    if (filterField === 'login') {
+      return patient.user.loginCode.toLowerCase().includes(normalizedFilterValue);
+    }
+
+    if (!normalizedCpfFilter) {
+      return false;
+    }
+
+    return patient.cpf.replace(/\D/g, '').includes(normalizedCpfFilter);
+  });
 
   if (!user) {
     return null;
@@ -460,8 +485,32 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-2xl shadow-lg border border-[#CBE9FB]">
           <div className="px-6 py-4 border-b border-[#CBE9FB]">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-xl font-semibold text-[#096196]">Pacientes Ativos</h2>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                <select
+                  value={filterField}
+                  onChange={(e) => setFilterField(e.target.value as PatientFilterField)}
+                  className="px-3 py-2 border border-[#CBE9FB] rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                >
+                  <option value="name">Filtrar por Nome</option>
+                  <option value="login">Filtrar por Login</option>
+                  <option value="cpf">Filtrar por CPF</option>
+                </select>
+                <input
+                  type="text"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  placeholder={
+                    filterField === 'name'
+                      ? 'Buscar paciente por nome'
+                      : filterField === 'login'
+                        ? 'Buscar paciente por login'
+                        : 'Buscar paciente por CPF'
+                  }
+                  className="w-full sm:w-72 px-3 py-2 border border-[#CBE9FB] rounded-lg text-sm text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                />
+              </div>
             </div>
           </div>
           <div className="p-6">
@@ -482,7 +531,13 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {patients.map((patient, index) => {
+                {filteredPatients.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-[#3A6C89]">
+                      Nenhum paciente encontrado para este filtro.
+                    </p>
+                  </div>
+                ) : filteredPatients.map((patient, index) => {
                   const avatarColor = getAvatarColor(index);
                   const initials = getInitials(patient.user.name);
 
