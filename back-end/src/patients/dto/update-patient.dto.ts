@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MinLength,
   Min,
 } from 'class-validator';
 
@@ -36,4 +37,9 @@ export class UpdatePatientDto {
   @IsInt()
   @Min(1)
   phase?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }

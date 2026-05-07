@@ -82,20 +82,31 @@ export class PatientsRepository {
       condition?: string;
       phase?: number;
       userName?: string;
+      userPasswordHash?: string;
     },
   ) {
-    const { userName, ...patientData } = data;
+    const { userName, userPasswordHash, ...patientData } = data;
+    const userUpdateData: {
+      name?: string;
+      passwordHash?: string;
+    } = {};
+
+    if (userName) {
+      userUpdateData.name = userName;
+    }
+
+    if (userPasswordHash) {
+      userUpdateData.passwordHash = userPasswordHash;
+    }
 
     return this.prisma.patient.update({
       where: { id },
       data: {
         ...patientData,
-        ...(userName
+        ...(Object.keys(userUpdateData).length > 0
           ? {
               user: {
-                update: {
-                  name: userName,
-                },
+                update: userUpdateData,
               },
             }
           : {}),

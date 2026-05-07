@@ -107,9 +107,13 @@ export class PatientsService {
     }
 
     const birthDate = dto.birthDate ? new Date(dto.birthDate) : undefined;
+    const passwordHash = dto.password
+      ? await hash(dto.password, 10)
+      : undefined;
 
     return this.patientsRepository.updateById(id, {
       userName: dto.name,
+      userPasswordHash: passwordHash,
       cpf: dto.cpf,
       address: dto.address,
       birthDate,

@@ -56,6 +56,7 @@ interface EditPatientFormData {
   birthDate: string;
   condition: string;
   phase: number;
+  password: string;
 }
 
 interface DeletePatientTarget {
@@ -92,7 +93,8 @@ export default function DashboardPage() {
     address: '',
     birthDate: '',
     condition: '',
-    phase: 1
+    phase: 1,
+    password: ''
   });
   const [error, setError] = useState('');
   const [editError, setEditError] = useState('');
@@ -100,6 +102,7 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const fetchPatients = async () => {
     try {
@@ -254,9 +257,11 @@ export default function DashboardPage() {
       address: patient.address,
       birthDate: formatDateForInput(patient.birthDate),
       condition: patient.condition,
-      phase: patient.phase
+      phase: patient.phase,
+      password: ''
     });
     setEditError('');
+    setShowEditPassword(false);
     setShowEditModal(true);
   };
 
@@ -270,8 +275,10 @@ export default function DashboardPage() {
       address: '',
       birthDate: '',
       condition: '',
-      phase: 1
+      phase: 1,
+      password: ''
     });
+    setShowEditPassword(false);
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -291,13 +298,17 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('token');
+      const { password, ...baseData } = editFormData;
+      const editPayload = password.trim()
+        ? { ...baseData, password }
+        : baseData;
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients/${editingPatientId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editFormData)
+        body: JSON.stringify(editPayload)
       });
 
       const data = await response.json();
@@ -862,6 +873,43 @@ export default function DashboardPage() {
                   <option value={2}>Fase 2</option>
                   <option value={3}>Fase 3</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Senha de Acesso
+                </label>
+                <div className="relative">
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    name="password"
+                    value={editFormData.password}
+                    onChange={handleEditChange}
+                    minLength={6}
+                    className="w-full px-4 py-3 pr-12 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                    placeholder="Digite para alterar a senha"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 px-3 text-[#3A6C89] hover:text-[#096196] transition-colors"
+                    title={showEditPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showEditPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.956 9.956 0 012.042-3.368m2.144-1.982A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a9.965 9.965 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 10L3 2" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-[#3A6C89] mt-1">
+                  Por segurança, a senha atual não pode ser exibida. Deixe em branco para manter a senha existente.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">
