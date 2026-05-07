@@ -70,6 +70,7 @@ interface DeletePatientTarget {
 }
 
 type PatientFilterField = 'name' | 'login' | 'cpf';
+type PatientStatusFilter = 'ALL' | 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -83,6 +84,7 @@ export default function DashboardPage() {
   const [deletePatientTarget, setDeletePatientTarget] = useState<DeletePatientTarget | null>(null);
   const [filterField, setFilterField] = useState<PatientFilterField>('name');
   const [filterValue, setFilterValue] = useState('');
+  const [statusFilter, setStatusFilter] = useState<PatientStatusFilter>('ALL');
   const [createdLoginCode, setCreatedLoginCode] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePatientFormData>({
     name: '',
@@ -385,6 +387,10 @@ export default function DashboardPage() {
   const normalizedFilterValue = filterValue.trim().toLowerCase();
   const normalizedCpfFilter = filterValue.replace(/\D/g, '');
   const filteredPatients = patients.filter((patient) => {
+    if (statusFilter !== 'ALL' && patient.status !== statusFilter) {
+      return false;
+    }
+
     if (!normalizedFilterValue) {
       return true;
     }
@@ -531,6 +537,16 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-xl font-semibold text-[#096196]">Pacientes Ativos</h2>
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as PatientStatusFilter)}
+                  className="px-3 py-2 border border-[#CBE9FB] rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                >
+                  <option value="ALL">Todos os Status</option>
+                  <option value="IN_PROGRESS">Em andamento</option>
+                  <option value="COMPLETED">Concluído</option>
+                  <option value="DEMITIDO">Demitido</option>
+                </select>
                 <select
                   value={filterField}
                   onChange={(e) => setFilterField(e.target.value as PatientFilterField)}
