@@ -598,7 +598,7 @@ export default function DashboardPage() {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                       placeholder="Nome do paciente"
                     />
                   </div>
@@ -614,7 +614,7 @@ export default function DashboardPage() {
                         value={formData.cpf}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                        className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                         placeholder="000.000.000-00"
                       />
                     </div>
@@ -629,7 +629,7 @@ export default function DashboardPage() {
                         value={formData.birthDate}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                        className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                       />
                     </div>
                   </div>
@@ -644,7 +644,7 @@ export default function DashboardPage() {
                       value={formData.address}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                       placeholder="Rua, número, bairro, cidade"
                     />
                   </div>
@@ -659,7 +659,7 @@ export default function DashboardPage() {
                       value={formData.condition}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                     />
                   </div>
 
@@ -674,7 +674,7 @@ export default function DashboardPage() {
                       onChange={handleChange}
                       required
                       minLength={6}
-                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                      className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                       placeholder="Mínimo 6 caracteres"
                     />
                     <p className="text-xs text-[#3A6C89] mt-1">
@@ -728,7 +728,7 @@ export default function DashboardPage() {
                   value={editFormData.name}
                   onChange={handleEditChange}
                   required
-                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                   placeholder="Nome do paciente"
                 />
               </div>
@@ -744,7 +744,7 @@ export default function DashboardPage() {
                     value={editFormData.cpf}
                     onChange={handleEditChange}
                     required
-                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                     placeholder="000.000.000-00"
                   />
                 </div>
@@ -759,7 +759,7 @@ export default function DashboardPage() {
                     value={editFormData.birthDate}
                     onChange={handleEditChange}
                     required
-                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                   />
                 </div>
               </div>
@@ -774,7 +774,7 @@ export default function DashboardPage() {
                   value={editFormData.address}
                   onChange={handleEditChange}
                   required
-                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                   placeholder="Rua, número, bairro, cidade"
                 />
               </div>
@@ -789,7 +789,7 @@ export default function DashboardPage() {
                   value={editFormData.condition}
                   onChange={handleEditChange}
                   required
-                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                 />
               </div>
 
@@ -801,7 +801,7 @@ export default function DashboardPage() {
                   name="phase"
                   value={editFormData.phase}
                   onChange={handleEditChange}
-                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                 >
                   <option value={1}>Fase 1</option>
                   <option value={2}>Fase 2</option>
