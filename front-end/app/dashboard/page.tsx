@@ -35,6 +35,7 @@ interface Patient {
   age: number;
   condition: string;
   phase: number;
+  status: 'IN_PROGRESS' | 'COMPLETED';
   user: {
     name: string;
     loginCode: string;
@@ -374,8 +375,8 @@ export default function DashboardPage() {
   };
 
   const totalPatients = patients.length;
-  const inProgressPatients = patients.filter(p => p.phase < 3).length;
-  const completedPatients = patients.filter(p => p.phase >= 3).length;
+  const inProgressPatients = patients.filter(p => p.status === 'IN_PROGRESS').length;
+  const completedPatients = patients.filter(p => p.status === 'COMPLETED').length;
   const normalizedFilterValue = filterValue.trim().toLowerCase();
   const normalizedCpfFilter = filterValue.replace(/\D/g, '');
   const filteredPatients = patients.filter((patient) => {
@@ -571,6 +572,17 @@ export default function DashboardPage() {
                           <div>
                             <h3 className="font-medium text-[#096196]">{patient.user.name}</h3>
                             <p className="text-sm text-[#3A6C89]">{patient.condition} • Fase {patient.phase}</p>
+                            <div className="mt-1">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  patient.status === 'COMPLETED'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                }`}
+                              >
+                                {patient.status === 'COMPLETED' ? 'Finalizado' : 'Em andamento'}
+                              </span>
+                            </div>
                           </div>
                         </div>
 

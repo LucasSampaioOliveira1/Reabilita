@@ -13,6 +13,7 @@ export class PatientsRepository {
     age: true,
     condition: true,
     phase: true,
+    status: true,
     createdAt: true,
     updatedAt: true,
     user: {
@@ -37,6 +38,7 @@ export class PatientsRepository {
     age: number;
     condition: string;
     phase: number;
+    status: 'IN_PROGRESS' | 'COMPLETED';
   }) {
     return this.prisma.patient.create({
       data,
@@ -84,6 +86,7 @@ export class PatientsRepository {
       age?: number;
       condition?: string;
       phase?: number;
+      status?: 'IN_PROGRESS' | 'COMPLETED';
       userName?: string;
       userPasswordHash?: string;
     },

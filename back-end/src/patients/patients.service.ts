@@ -28,6 +28,10 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
+function getStatusByPhase(phase: number): 'IN_PROGRESS' | 'COMPLETED' {
+  return phase >= 3 ? 'COMPLETED' : 'IN_PROGRESS';
+}
+
 @Injectable()
 export class PatientsService {
   constructor(
@@ -71,6 +75,7 @@ export class PatientsService {
       age,
       condition: dto.condition,
       phase: 1,
+      status: getStatusByPhase(1),
     });
 
     return {
@@ -111,6 +116,8 @@ export class PatientsService {
     const passwordHash = dto.password
       ? await hash(dto.password, 10)
       : undefined;
+    const status =
+      dto.phase !== undefined ? getStatusByPhase(dto.phase) : undefined;
 
     return this.patientsRepository.updateById(id, {
       userName: dto.name,
@@ -122,6 +129,7 @@ export class PatientsService {
       age: birthDate ? calculateAge(birthDate) : undefined,
       condition: dto.condition,
       phase: dto.phase,
+      status,
     });
   }
 

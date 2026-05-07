@@ -8,6 +8,11 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum PatientStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
   id               String    @id @default(cuid())
   name             String
@@ -32,12 +37,14 @@ model Patient {
   age       Int
   condition String
   phase     Int       @default(1)
+  status    PatientStatus @default(IN_PROGRESS)
   sessions  Session[]
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([phase])
+  @@index([status])
   @@index([cpf])
 }
 
