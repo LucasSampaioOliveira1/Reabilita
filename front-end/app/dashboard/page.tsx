@@ -500,7 +500,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-[#3A6C89]">Concluídos</p>
+                <p className="text-sm font-medium text-[#3A6C89]">Finalizados</p>
                 <p className="text-3xl font-bold text-[#096196]">{completedPatients}</p>
                 <p className="text-sm text-[#0B78B7] mt-1">
                   {totalPatients > 0 ? Math.round((completedPatients / totalPatients) * 100) : 0}% do total
@@ -544,7 +544,7 @@ export default function DashboardPage() {
                 >
                   <option value="ALL">Todos os Status</option>
                   <option value="IN_PROGRESS">Em andamento</option>
-                  <option value="COMPLETED">Concluído</option>
+                  <option value="COMPLETED">Finalizado</option>
                   <option value="DEMITIDO">Demitido</option>
                 </select>
                 <select
