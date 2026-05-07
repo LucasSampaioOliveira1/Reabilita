@@ -11,6 +11,10 @@ export class CreatePatientDto {
 
   @IsString()
   @IsNotEmpty()
+  phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
   address!: string;
 
   @IsDateString()

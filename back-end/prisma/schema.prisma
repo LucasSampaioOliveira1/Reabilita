@@ -26,6 +26,7 @@ model Patient {
   id        String    @id @default(cuid())
   userId    String    @unique
   cpf       String    @unique
+  phone     String    @default("")
   address   String
   birthDate DateTime
   age       Int

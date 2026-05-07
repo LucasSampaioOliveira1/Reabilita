@@ -7,6 +7,7 @@ export class PatientsRepository {
     id: true,
     userId: true,
     cpf: true,
+    phone: true,
     address: true,
     birthDate: true,
     age: true,
@@ -30,6 +31,7 @@ export class PatientsRepository {
   create(data: {
     userId: string;
     cpf: string;
+    phone: string;
     address: string;
     birthDate: Date;
     age: number;
@@ -76,6 +78,7 @@ export class PatientsRepository {
     id: string,
     data: {
       cpf?: string;
+      phone?: string;
       address?: string;
       birthDate?: Date;
       age?: number;

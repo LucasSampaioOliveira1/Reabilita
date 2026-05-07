@@ -22,6 +22,11 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   address?: string;
 
   @IsOptional()

@@ -65,6 +65,7 @@ export class PatientsService {
     const patient = await this.patientsRepository.create({
       userId: user.id,
       cpf: dto.cpf,
+      phone: dto.phone,
       address: dto.address,
       birthDate,
       age,
@@ -115,6 +116,7 @@ export class PatientsService {
       userName: dto.name,
       userPasswordHash: passwordHash,
       cpf: dto.cpf,
+      phone: dto.phone,
       address: dto.address,
       birthDate,
       age: birthDate ? calculateAge(birthDate) : undefined,

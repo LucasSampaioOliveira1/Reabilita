@@ -29,6 +29,7 @@ function getUserFromStorage() {
 interface Patient {
   id: string;
   cpf: string;
+  phone: string;
   address: string;
   birthDate: string;
   age: number;
@@ -43,6 +44,7 @@ interface Patient {
 interface CreatePatientFormData {
   name: string;
   cpf: string;
+  phone: string;
   address: string;
   birthDate: string;
   password: string;
@@ -52,6 +54,7 @@ interface CreatePatientFormData {
 interface EditPatientFormData {
   name: string;
   cpf: string;
+  phone: string;
   address: string;
   birthDate: string;
   condition: string;
@@ -82,6 +85,7 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<CreatePatientFormData>({
     name: '',
     cpf: '',
+    phone: '',
     address: '',
     birthDate: '',
     password: '',
@@ -90,6 +94,7 @@ export default function DashboardPage() {
   const [editFormData, setEditFormData] = useState<EditPatientFormData>({
     name: '',
     cpf: '',
+    phone: '',
     address: '',
     birthDate: '',
     condition: '',
@@ -179,6 +184,7 @@ export default function DashboardPage() {
       setFormData({
         name: '',
         cpf: '',
+        phone: '',
         address: '',
         birthDate: '',
         password: '',
@@ -254,6 +260,7 @@ export default function DashboardPage() {
     setEditFormData({
       name: patient.user.name,
       cpf: patient.cpf,
+      phone: patient.phone,
       address: patient.address,
       birthDate: formatDateForInput(patient.birthDate),
       condition: patient.condition,
@@ -272,6 +279,7 @@ export default function DashboardPage() {
     setEditFormData({
       name: '',
       cpf: '',
+      phone: '',
       address: '',
       birthDate: '',
       condition: '',
@@ -339,6 +347,7 @@ export default function DashboardPage() {
     setFormData({
       name: '',
       cpf: '',
+      phone: '',
       address: '',
       birthDate: '',
       password: '',
@@ -669,7 +678,7 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
                         CPF *
@@ -682,6 +691,21 @@ export default function DashboardPage() {
                         required
                         className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                         placeholder="000.000.000-00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                        Telefone *
+                      </label>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                        placeholder="(27) 99999-9999"
                       />
                     </div>
 
@@ -799,7 +823,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
                     CPF *
@@ -812,6 +836,21 @@ export default function DashboardPage() {
                     required
                     className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
                     placeholder="000.000.000-00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                    Telefone *
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={editFormData.phone}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                    placeholder="(27) 99999-9999"
                   />
                 </div>
 
