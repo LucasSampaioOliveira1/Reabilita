@@ -58,6 +58,11 @@ interface EditPatientFormData {
   phase: number;
 }
 
+interface DeletePatientTarget {
+  id: string;
+  name: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user] = useState<{ name: string; role: string } | null>(getUserFromStorage);
@@ -65,7 +70,9 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
+  const [deletePatientTarget, setDeletePatientTarget] = useState<DeletePatientTarget | null>(null);
   const [createdLoginCode, setCreatedLoginCode] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePatientFormData>({
     name: '',
@@ -85,8 +92,10 @@ export default function DashboardPage() {
   });
   const [error, setError] = useState('');
   const [editError, setEditError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPatients = async () => {
     try {
@@ -186,6 +195,51 @@ export default function DashboardPage() {
   const formatDateForInput = (date: string) => {
     if (!date) return '';
     return new Date(date).toISOString().split('T')[0];
+  };
+
+  const openDeleteModal = (patient: Patient) => {
+    setDeletePatientTarget({
+      id: patient.id,
+      name: patient.user.name
+    });
+    setDeleteError('');
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeletePatientTarget(null);
+    setDeleteError('');
+  };
+
+  const handleDeletePatient = async () => {
+    if (!deletePatientTarget) return;
+
+    setDeleteError('');
+    setIsDeleting(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients/${deletePatientTarget.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao excluir paciente');
+      }
+
+      closeDeleteModal();
+      fetchPatients();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Erro ao excluir paciente');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const openEditModal = (patient: Patient) => {
@@ -475,7 +529,11 @@ export default function DashboardPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
-                          <button className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white shadow-sm rounded-lg transition-all" title="Excluir">
+                          <button
+                            onClick={() => openDeleteModal(patient)}
+                            className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white shadow-sm rounded-lg transition-all"
+                            title="Excluir"
+                          >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -769,6 +827,43 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-[#CBE9FB] rounded-2xl p-8 max-w-md w-full">
+            <h3 className="text-2xl font-bold text-[#096196] mb-3">Confirmar Exclusão</h3>
+            <p className="text-[#3A6C89] mb-6">
+              Tem certeza que deseja excluir o paciente{' '}
+              <span className="font-semibold text-[#096196]">{deletePatientTarget?.name}</span>?
+            </p>
+
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="flex-1 bg-[#E5F5FF] text-[#096196] py-3 px-4 rounded-xl font-semibold hover:bg-[#D8EFFD] transition-colors"
+                disabled={isDeleting}
+              >
+                Não
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePatient}
+                className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Sim'}
+              </button>
+            </div>
           </div>
         </div>
       )}

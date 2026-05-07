@@ -118,4 +118,18 @@ export class PatientsService {
       phase: dto.phase,
     });
   }
+
+  async remove(id: string) {
+    const patient = await this.patientsRepository.findById(id);
+
+    if (!patient) {
+      throw new NotFoundException('Paciente não encontrado.');
+    }
+
+    await this.patientsRepository.deleteByUserId(patient.userId);
+
+    return {
+      message: 'Paciente excluído com sucesso.',
+    };
+  }
 }

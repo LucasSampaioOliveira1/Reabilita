@@ -103,4 +103,10 @@ export class PatientsRepository {
       select: this.patientSelect,
     });
   }
+
+  async deleteByUserId(userId: string) {
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+  }
 }
