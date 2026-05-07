@@ -1,4 +1,4 @@
-﻿import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { hash } from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersRepository } from './repositories/users.repository';
@@ -40,5 +40,9 @@ export class UsersService {
 
   findByEmail(email: string) {
     return this.usersRepository.findByEmail(email);
+  }
+
+  findByLoginCode(loginCode: string) {
+    return this.usersRepository.findByLoginCode(loginCode);
   }
 }

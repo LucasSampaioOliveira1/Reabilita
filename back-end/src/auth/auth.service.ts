@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { PatientLoginDto } from './dto/patient-login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UsersService } from '../users/users.service';
 
@@ -35,6 +36,26 @@ export class AuthService {
       throw new UnauthorizedException(
         'Acesso permitido apenas para fisioterapeutas.',
       );
+    }
+
+    return this.issueToken(user);
+  }
+
+  async patientLogin(dto: PatientLoginDto) {
+    const user = await this.usersService.findByLoginCode(dto.loginCode);
+
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    const passwordMatches = await compare(dto.password, user.passwordHash);
+
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    if (user.role !== 'patient') {
+      throw new UnauthorizedException('Acesso permitido apenas para pacientes.');
     }
 
     return this.issueToken(user);

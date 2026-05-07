@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 
 function getPatientFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -26,7 +27,7 @@ function getPatientFromStorage() {
 }
 
 export default function PatientPage() {
-  const [patientUser, setPatientUser] = useState<{ name: string; role: string } | null>(getPatientFromStorage);
+  const router = useRouter();
   const [formData, setFormData] = useState({
     loginCode: '',
     password: '',
@@ -34,6 +35,13 @@ export default function PatientPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const user = getPatientFromStorage();
+    if (user?.role === 'patient') {
+      router.push('/patient/dashboard');
+    }
+  }, [router]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -77,22 +85,12 @@ export default function PatientPage() {
 
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      setPatientUser(data.user);
+      router.push('/patient/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setPatientUser(null);
-    setFormData({
-      loginCode: '',
-      password: '',
-    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,30 +99,6 @@ export default function PatientPage() {
       [e.target.name]: e.target.value,
     }));
   };
-
-  if (patientUser) {
-    return (
-      <main className="min-h-screen bg-[#E5F5FF] px-6 py-10 text-slate-900">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-sm ring-1 ring-[#CBE9FB]">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#096196]">
-            Paciente
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#096196]">
-            Olá, {patientUser.name}
-          </h1>
-          <p className="mt-4 text-base leading-7 text-[#3A6C89]">
-            Login realizado com sucesso. Esta é a área inicial do paciente no front-end.
-          </p>
-          <button
-            onClick={handleLogout}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200"
-          >
-            Sair
-          </button>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6 animate-fadeInUp">
