@@ -71,4 +71,36 @@ export class PatientsRepository {
       select: this.patientSelect,
     });
   }
+
+  updateById(
+    id: string,
+    data: {
+      cpf?: string;
+      address?: string;
+      birthDate?: Date;
+      age?: number;
+      condition?: string;
+      phase?: number;
+      userName?: string;
+    },
+  ) {
+    const { userName, ...patientData } = data;
+
+    return this.prisma.patient.update({
+      where: { id },
+      data: {
+        ...patientData,
+        ...(userName
+          ? {
+              user: {
+                update: {
+                  name: userName,
+                },
+              },
+            }
+          : {}),
+      },
+      select: this.patientSelect,
+    });
+  }
 }

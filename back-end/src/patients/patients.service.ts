@@ -6,6 +6,7 @@ import {
 import { hash } from 'bcrypt';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { CreatePatientDto } from './dto/create-patient.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientsRepository } from './repositories/patients.repository';
 
 function generateLoginCode(): string {
@@ -42,9 +43,7 @@ export class PatientsService {
     }
 
     let loginCode = generateLoginCode();
-    let existingLogin = await this.usersRepository.findByLoginCode(
-      loginCode,
-    );
+    let existingLogin = await this.usersRepository.findByLoginCode(loginCode);
 
     while (existingLogin) {
       loginCode = generateLoginCode();
@@ -91,5 +90,32 @@ export class PatientsService {
     }
 
     return patient;
+  }
+
+  async update(id: string, dto: UpdatePatientDto) {
+    const existingPatient = await this.patientsRepository.findById(id);
+
+    if (!existingPatient) {
+      throw new NotFoundException('Paciente não encontrado.');
+    }
+
+    if (dto.cpf && dto.cpf !== existingPatient.cpf) {
+      const patientWithCpf = await this.patientsRepository.findByCpf(dto.cpf);
+      if (patientWithCpf && patientWithCpf.id !== id) {
+        throw new ConflictException('CPF já cadastrado.');
+      }
+    }
+
+    const birthDate = dto.birthDate ? new Date(dto.birthDate) : undefined;
+
+    return this.patientsRepository.updateById(id, {
+      userName: dto.name,
+      cpf: dto.cpf,
+      address: dto.address,
+      birthDate,
+      age: birthDate ? calculateAge(birthDate) : undefined,
+      condition: dto.condition,
+      phase: dto.phase,
+    });
   }
 }

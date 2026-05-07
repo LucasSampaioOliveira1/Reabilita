@@ -40,14 +40,34 @@ interface Patient {
   };
 }
 
+interface CreatePatientFormData {
+  name: string;
+  cpf: string;
+  address: string;
+  birthDate: string;
+  password: string;
+  condition: string;
+}
+
+interface EditPatientFormData {
+  name: string;
+  cpf: string;
+  address: string;
+  birthDate: string;
+  condition: string;
+  phase: number;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user] = useState<{ name: string; role: string } | null>(getUserFromStorage);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [createdLoginCode, setCreatedLoginCode] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreatePatientFormData>({
     name: '',
     cpf: '',
     address: '',
@@ -55,8 +75,18 @@ export default function DashboardPage() {
     password: '',
     condition: 'Fratura de Rádio Distal'
   });
+  const [editFormData, setEditFormData] = useState<EditPatientFormData>({
+    name: '',
+    cpf: '',
+    address: '',
+    birthDate: '',
+    condition: '',
+    phase: 1
+  });
   const [error, setError] = useState('');
+  const [editError, setEditError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const fetchPatients = async () => {
     try {
@@ -151,6 +181,80 @@ export default function DashboardPage() {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const formatDateForInput = (date: string) => {
+    if (!date) return '';
+    return new Date(date).toISOString().split('T')[0];
+  };
+
+  const openEditModal = (patient: Patient) => {
+    setEditingPatientId(patient.id);
+    setEditFormData({
+      name: patient.user.name,
+      cpf: patient.cpf,
+      address: patient.address,
+      birthDate: formatDateForInput(patient.birthDate),
+      condition: patient.condition,
+      phase: patient.phase
+    });
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingPatientId(null);
+    setEditError('');
+    setEditFormData({
+      name: '',
+      cpf: '',
+      address: '',
+      birthDate: '',
+      condition: '',
+      phase: 1
+    });
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: name === 'phase' ? Number(value) : value
+    }));
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPatientId) return;
+
+    setEditError('');
+    setIsEditing(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patients/${editingPatientId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(editFormData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao atualizar paciente');
+      }
+
+      closeEditModal();
+      fetchPatients();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Erro ao atualizar paciente');
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleLogout = () => {
@@ -362,7 +466,11 @@ export default function DashboardPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                           </button>
-                          <button className="p-2 bg-white border border-green-200 text-green-600 hover:bg-green-600 hover:text-white shadow-sm rounded-lg transition-all" title="Editar">
+                          <button
+                            onClick={() => openEditModal(patient)}
+                            className="p-2 bg-white border border-green-200 text-green-600 hover:bg-green-600 hover:text-white shadow-sm rounded-lg transition-all"
+                            title="Editar"
+                          >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
@@ -536,6 +644,131 @@ export default function DashboardPage() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-[#CBE9FB] rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-[#096196] mb-6">Editar Paciente</h3>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                  {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={editFormData.name}
+                  onChange={handleEditChange}
+                  required
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  placeholder="Nome do paciente"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                    CPF *
+                  </label>
+                  <input
+                    type="text"
+                    name="cpf"
+                    value={editFormData.cpf}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                    placeholder="000.000.000-00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                    Data de Nascimento *
+                  </label>
+                  <input
+                    type="date"
+                    name="birthDate"
+                    value={editFormData.birthDate}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Endereço *
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={editFormData.address}
+                  onChange={handleEditChange}
+                  required
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  placeholder="Rua, número, bairro, cidade"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Condição *
+                </label>
+                <input
+                  type="text"
+                  name="condition"
+                  value={editFormData.condition}
+                  onChange={handleEditChange}
+                  required
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Fase do Tratamento *
+                </label>
+                <select
+                  name="phase"
+                  value={editFormData.phase}
+                  onChange={handleEditChange}
+                  className="w-full px-4 py-3 border border-[#CBE9FB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                >
+                  <option value={1}>Fase 1</option>
+                  <option value={2}>Fase 2</option>
+                  <option value={3}>Fase 3</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="flex-1 bg-[#E5F5FF] text-[#096196] py-3 px-4 rounded-xl font-semibold hover:bg-[#D8EFFD] transition-colors"
+                  disabled={isEditing}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#096196] text-white py-3 px-4 rounded-xl font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-50"
+                  disabled={isEditing}
+                >
+                  {isEditing ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
