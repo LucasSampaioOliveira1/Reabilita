@@ -173,30 +173,49 @@ export default function PatientDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#E5F5FF] px-6 py-10 text-slate-900">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-[#CBE9FB]">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#096196]">
-            Paciente
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#096196]">
-            Olá, {data.patient.user.name}
-          </h1>
-          <p className="mt-4 text-base leading-7 text-[#3A6C89]">
-            Seu perfil de acompanhamento está disponível com exercícios e vídeos personalizados.
-          </p>
-          {data.notifications.map((note) => (
-            <p key={note} className="mt-3 text-sm font-semibold text-[#0B78B7]">
-              {note}
-            </p>
-          ))}
-          <button
-            onClick={handleLogout}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200"
-          >
-            Sair
-          </button>
+    <main className="min-h-screen bg-[#E5F5FF]">
+      <header className="bg-white shadow-sm border-b border-[#CBE9FB]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-6 gap-4 sm:gap-0">
+            <div className="flex items-center w-full sm:w-auto justify-center sm:justify-start">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-linear-to-br from-[#096196] to-[#0B78B7] rounded-xl shadow-lg shrink-0">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9 9 0 1119 12.75M15 12h.01M9 12h.01M12 16h.01" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h1 className="text-2xl font-bold text-[#096196] leading-none">Reabilita Serra</h1>
+                <p className="text-sm text-[#3A6C89] mt-1">Perfil do Paciente</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 sm:space-x-4 border-l border-[#CBE9FB] pl-4 sm:pl-6 shrink-0">
+              <div className="text-right hidden lg:block">
+                <p className="text-sm font-bold text-[#096196] leading-none">{data.patient.user.name}</p>
+                <p className="text-xs text-[#3A6C89] mt-1">Paciente</p>
+              </div>
+              <div className="w-10 h-10 bg-[#E5F5FF] text-[#096196] font-bold flex items-center justify-center rounded-full shrink-0">
+                {data.patient.user.name.substring(0, 2).toUpperCase()}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200"
+              >
+                Sair
+              </button>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {data.notifications.length > 0 && (
+          <div className="bg-[#DFF2FE] border border-[#CBE9FB] text-[#096196] px-4 py-3 rounded-xl text-sm font-semibold">
+            {data.notifications.map((note) => (
+              <p key={note}>{note}</p>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
@@ -204,80 +223,101 @@ export default function PatientDashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="rounded-2xl bg-white p-5 ring-1 ring-[#CBE9FB]">
-            <p className="text-sm text-[#3A6C89]">Adesão</p>
-            <p className="mt-2 text-2xl font-bold text-[#096196]">{data.summary.adherenceRate}%</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <p className="text-sm font-medium text-[#3A6C89]">Adesão</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.adherenceRate}%</p>
           </div>
-          <div className="rounded-2xl bg-white p-5 ring-1 ring-[#CBE9FB]">
-            <p className="text-sm text-[#3A6C89]">Dor Média (EVA)</p>
-            <p className="mt-2 text-2xl font-bold text-[#096196]">{data.summary.avgPain}</p>
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <p className="text-sm font-medium text-[#3A6C89]">Dor Média (EVA)</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.avgPain}</p>
           </div>
-          <div className="rounded-2xl bg-white p-5 ring-1 ring-[#CBE9FB]">
-            <p className="text-sm text-[#3A6C89]">Frequência Semanal</p>
-            <p className="mt-2 text-2xl font-bold text-[#096196]">{data.summary.weeklyFrequency}</p>
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <p className="text-sm font-medium text-[#3A6C89]">Frequência Semanal</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.weeklyFrequency}</p>
           </div>
-          <div className="rounded-2xl bg-white p-5 ring-1 ring-[#CBE9FB]">
-            <p className="text-sm text-[#3A6C89]">Sessões</p>
-            <p className="mt-2 text-2xl font-bold text-[#096196]">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <p className="text-sm font-medium text-[#3A6C89]">Sessões</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">
               {data.summary.completedSessions}/{data.summary.totalSessions}
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 ring-1 ring-[#CBE9FB]">
-          <h2 className="text-xl font-bold text-[#096196] mb-4">Checklist Diário e Registro EVA</h2>
-          <form onSubmit={handleSessionSubmit} className="space-y-4">
-            <label className="flex items-center gap-3 text-[#096196] font-semibold">
-              <input
-                type="checkbox"
-                checked={completedAll}
-                onChange={(e) => setCompletedAll(e.target.checked)}
-                className="h-4 w-4"
-              />
-              Concluí os exercícios do dia
-            </label>
-            <div>
-              <label className="block text-sm font-semibold text-[#3A6C89] mb-2">Dor atual (EVA 0–10)</label>
-              <input
-                type="range"
-                min={0}
-                max={10}
-                value={painLevel}
-                onChange={(e) => setPainLevel(Number(e.target.value))}
-                className="w-full"
-              />
-              <p className="text-[#096196] font-bold mt-1">{painLevel}/10</p>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
-                Registro de interações (opcional)
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <h2 className="text-xl font-bold text-[#096196] mb-4">Checklist Diário e Registro EVA</h2>
+            <form onSubmit={handleSessionSubmit} className="space-y-4">
+              <label className="flex items-center gap-3 text-[#096196] font-semibold">
+                <input
+                  type="checkbox"
+                  checked={completedAll}
+                  onChange={(e) => setCompletedAll(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Concluí os exercícios do dia
               </label>
-              <textarea
-                value={interactionNote}
-                onChange={(e) => setInteractionNote(e.target.value)}
-                className="w-full border border-[#CBE9FB] rounded-lg p-3"
-                placeholder="Como foi o treino hoje?"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isSavingSession}
-              className="bg-[#096196] text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-[#0B78B7] disabled:opacity-60"
-            >
-              {isSavingSession ? 'Salvando...' : 'Salvar Registro Diário'}
-            </button>
-          </form>
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">Dor atual (EVA 0–10)</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={painLevel}
+                  onChange={(e) => setPainLevel(Number(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-[#096196] font-bold mt-1">{painLevel}/10</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
+                  Registro de interações (opcional)
+                </label>
+                <textarea
+                  value={interactionNote}
+                  onChange={(e) => setInteractionNote(e.target.value)}
+                  className="w-full border border-[#CBE9FB] rounded-lg p-3 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  placeholder="Como foi o treino hoje?"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSavingSession}
+                className="bg-[#096196] text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-60"
+              >
+                {isSavingSession ? 'Salvando...' : 'Salvar Registro Diário'}
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
+            <h2 className="text-xl font-bold text-[#096196] mb-4">Interações</h2>
+            {data.interactions.length === 0 ? (
+              <p className="text-[#3A6C89]">Nenhuma interação registrada até o momento.</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-auto">
+                {data.interactions.map((interaction) => (
+                  <div key={interaction.id} className="border border-[#CBE9FB] rounded-lg p-3 bg-[#F8FCFF]">
+                    <p className="text-[#096196]">{interaction.note}</p>
+                    <p className="text-xs text-[#3A6C89] mt-1">
+                      {interaction.author.name} ({interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) •{' '}
+                      {new Date(interaction.createdAt).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 ring-1 ring-[#CBE9FB]">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
           <h2 className="text-xl font-bold text-[#096196] mb-4">Exercícios Prescritos</h2>
           {data.exercises.length === 0 ? (
             <p className="text-[#3A6C89]">Seu fisioterapeuta ainda não cadastrou exercícios.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {data.exercises.map((exercise) => (
-                <div key={exercise.id} className="border border-[#CBE9FB] rounded-lg p-3">
+                <div key={exercise.id} className="border border-[#CBE9FB] rounded-lg p-4 bg-[#F8FCFF]">
                   <p className="font-semibold text-[#096196]">{exercise.title}</p>
                   <p className="text-sm text-[#3A6C89]">Fase {exercise.phase}</p>
                   {exercise.description ? (
@@ -289,14 +329,14 @@ export default function PatientDashboardPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl p-6 ring-1 ring-[#CBE9FB]">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
           <h2 className="text-xl font-bold text-[#096196] mb-4">Vídeos de Exercícios</h2>
           {data.videos.length === 0 ? (
             <p className="text-[#3A6C89]">Seu fisioterapeuta ainda não adicionou vídeos.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {data.videos.map((video) => (
-                <div key={video.id} className="border border-[#CBE9FB] rounded-lg p-3">
+                <div key={video.id} className="border border-[#CBE9FB] rounded-lg p-3 bg-[#F8FCFF]">
                   <p className="font-semibold text-[#096196] mb-2">{video.title}</p>
                   <p className="text-xs text-[#3A6C89] mb-2">Fase {video.phase}</p>
                   <div className="aspect-video">
@@ -314,33 +354,14 @@ export default function PatientDashboardPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl p-6 ring-1 ring-[#CBE9FB]">
-          <h2 className="text-xl font-bold text-[#096196] mb-4">Interações</h2>
-          {data.interactions.length === 0 ? (
-            <p className="text-[#3A6C89]">Nenhuma interação registrada até o momento.</p>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-auto">
-              {data.interactions.map((interaction) => (
-                <div key={interaction.id} className="border border-[#CBE9FB] rounded-lg p-3">
-                  <p className="text-[#096196]">{interaction.note}</p>
-                  <p className="text-xs text-[#3A6C89] mt-1">
-                    {interaction.author.name} ({interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) •{' '}
-                    {new Date(interaction.createdAt).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 ring-1 ring-[#CBE9FB]">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
           <h2 className="text-xl font-bold text-[#096196] mb-4">Histórico Recente</h2>
           {data.sessions.length === 0 ? (
             <p className="text-[#3A6C89]">Nenhum registro diário ainda.</p>
           ) : (
             <div className="space-y-2 max-h-72 overflow-auto">
               {data.sessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between border border-[#CBE9FB] rounded-lg p-3">
+                <div key={session.id} className="flex items-center justify-between border border-[#CBE9FB] rounded-lg p-3 bg-[#F8FCFF]">
                   <span className="text-[#096196] font-semibold">
                     {new Date(session.date).toLocaleDateString('pt-BR')}
                   </span>
