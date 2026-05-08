@@ -384,7 +384,15 @@ export default function PatientProfilePage() {
                     <p className="font-semibold text-[#096196]">{video.title}</p>
                     <p className="text-xs text-[#3A6C89]">Fase {video.phase}</p>
                   </div>
-                  <button onClick={() => removeVideo(video.id)} className="text-red-600 font-semibold text-sm hover:text-red-700">Excluir</button>
+                  <button
+                    onClick={() => removeVideo(video.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Excluir
+                  </button>
                 </div>
               ))}
             </div>
@@ -405,7 +413,15 @@ export default function PatientProfilePage() {
                     <p className="font-semibold text-[#096196]">{exercise.title}</p>
                     <p className="text-xs text-[#3A6C89]">Fase {exercise.phase}</p>
                   </div>
-                  <button onClick={() => removeExercise(exercise.id)} className="text-red-600 font-semibold text-sm hover:text-red-700">Excluir</button>
+                  <button
+                    onClick={() => removeExercise(exercise.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Excluir
+                  </button>
                 </div>
               ))}
             </div>
