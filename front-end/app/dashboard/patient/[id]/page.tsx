@@ -273,8 +273,11 @@ export default function PatientProfilePage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-[#E5F5FF] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#096196]" />
+      <main className="min-h-screen bg-[#E5F5FF] flex items-center justify-center p-6">
+        <div className="bg-white border border-[#CBE9FB] rounded-2xl shadow-lg px-8 py-10 text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#096196] mx-auto" />
+          <p className="mt-4 text-[#3A6C89] font-medium">Carregando perfil do paciente...</p>
+        </div>
       </main>
     );
   }
@@ -282,32 +285,59 @@ export default function PatientProfilePage() {
   if (!data) {
     return (
       <main className="min-h-screen bg-[#E5F5FF] p-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl p-6 border border-[#CBE9FB]">
-          <p className="text-red-600">{error || 'Não foi possível carregar o perfil.'}</p>
-          <Link href="/dashboard" className="mt-4 inline-block text-[#096196] font-semibold">Voltar ao Dashboard</Link>
+        <div className="max-w-4xl mx-auto bg-white rounded-2xl p-8 border border-[#CBE9FB] shadow-lg">
+          <p className="text-red-600 font-medium">{error || 'Não foi possível carregar o perfil.'}</p>
+          <Link href="/dashboard" className="mt-5 inline-flex items-center rounded-lg bg-[#096196] px-4 py-2 text-white font-semibold hover:bg-[#0B78B7] transition-colors">
+            Voltar ao Dashboard
+          </Link>
         </div>
       </main>
     );
   }
 
+  const patientStatusMeta = {
+    IN_PROGRESS: {
+      label: 'Em andamento',
+      className: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    },
+    COMPLETED: {
+      label: 'Finalizado',
+      className: 'bg-green-100 text-green-700 border-green-200',
+    },
+    DEMITIDO: {
+      label: 'Demitido',
+      className: 'bg-red-100 text-red-700 border-red-200',
+    },
+  } as const;
+
   return (
-    <main className="min-h-screen bg-[#E5F5FF] p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p className="text-sm text-[#3A6C89]">Perfil do Paciente</p>
-            <h1 className="text-2xl font-bold text-[#096196]">{data.patient.user.name}</h1>
-            <p className="text-[#3A6C89]">{data.patient.condition} • Fase {data.patient.phase}</p>
+    <main className="min-h-screen bg-[#E5F5FF]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-linear-to-br from-[#096196] to-[#0B78B7] rounded-xl shadow-md shrink-0">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-[#3A6C89]">Perfil do Paciente</p>
+              <h1 className="text-2xl font-bold text-[#096196]">{data.patient.user.name}</h1>
+              <p className="text-[#3A6C89]">{data.patient.condition} • Fase {data.patient.phase}</p>
+              <span className={`inline-flex mt-3 items-center px-3 py-1 rounded-full border text-xs font-semibold ${patientStatusMeta[data.patient.status].className}`}>
+                {patientStatusMeta[data.patient.status].label}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={downloadReport}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-[#096196] text-white font-semibold hover:bg-[#0B78B7] disabled:opacity-60"
+              className="px-4 py-2 rounded-lg bg-[#096196] text-white font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-60"
             >
               Baixar Relatório
             </button>
-            <Link href="/dashboard" className="px-4 py-2 rounded-lg bg-white border border-[#CBE9FB] text-[#096196] font-semibold">
+            <Link href="/dashboard" className="px-4 py-2 rounded-lg bg-[#096196] text-white font-semibold hover:bg-[#0B78B7] transition-colors">
               Voltar
             </Link>
           </div>
@@ -319,74 +349,74 @@ export default function PatientProfilePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-4 border border-[#CBE9FB]">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Adesão</p>
-            <p className="text-2xl font-bold text-[#096196]">{data.summary.adherenceRate}%</p>
+            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.adherenceRate}%</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-[#CBE9FB]">
+          <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Dor Média (EVA)</p>
-            <p className="text-2xl font-bold text-[#096196]">{data.summary.avgPain}</p>
+            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.avgPain}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-[#CBE9FB]">
+          <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Freq./semana</p>
-            <p className="text-2xl font-bold text-[#096196]">{data.summary.weeklyFrequency}</p>
+            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.weeklyFrequency}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-[#CBE9FB]">
+          <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Sessões</p>
-            <p className="text-2xl font-bold text-[#096196]">{data.summary.completedSessions}/{data.summary.totalSessions}</p>
+            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.completedSessions}/{data.summary.totalSessions}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB]">
+          <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
             <h2 className="text-lg font-bold text-[#096196] mb-4">Adicionar Vídeo</h2>
             <form onSubmit={addVideo} className="space-y-3">
-              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="Título do vídeo" value={videoForm.title} onChange={(e) => setVideoForm((prev) => ({ ...prev, title: e.target.value }))} required />
-              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="URL do YouTube" value={videoForm.videoUrl} onChange={(e) => setVideoForm((prev) => ({ ...prev, videoUrl: e.target.value }))} required />
-              <input type="number" min={1} className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="Fase" value={videoForm.phase} onChange={(e) => setVideoForm((prev) => ({ ...prev, phase: Number(e.target.value) }))} />
+              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="Título do vídeo" value={videoForm.title} onChange={(e) => setVideoForm((prev) => ({ ...prev, title: e.target.value }))} required />
+              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="URL do YouTube" value={videoForm.videoUrl} onChange={(e) => setVideoForm((prev) => ({ ...prev, videoUrl: e.target.value }))} required />
+              <input type="number" min={1} className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="Fase" value={videoForm.phase} onChange={(e) => setVideoForm((prev) => ({ ...prev, phase: Number(e.target.value) }))} />
               <button disabled={saving} className="w-full bg-[#096196] text-white rounded-lg py-2 font-semibold hover:bg-[#0B78B7] disabled:opacity-60">Adicionar Vídeo</button>
             </form>
             <div className="mt-4 space-y-2 max-h-64 overflow-auto">
               {data.videos.map((video) => (
-                <div key={video.id} className="border border-[#CBE9FB] rounded-lg p-3 flex items-center justify-between gap-3">
+                <div key={video.id} className="bg-[#F3FAFF] border border-[#D6EEFC] rounded-lg p-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-[#096196]">{video.title}</p>
                     <p className="text-xs text-[#3A6C89]">Fase {video.phase}</p>
                   </div>
-                  <button onClick={() => removeVideo(video.id)} className="text-red-600 font-semibold text-sm">Excluir</button>
+                  <button onClick={() => removeVideo(video.id)} className="text-red-600 font-semibold text-sm hover:text-red-700">Excluir</button>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB]">
+          <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
             <h2 className="text-lg font-bold text-[#096196] mb-4">Plano de Exercícios</h2>
             <form onSubmit={addExercise} className="space-y-3">
-              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="Título do exercício" value={exerciseForm.title} onChange={(e) => setExerciseForm((prev) => ({ ...prev, title: e.target.value }))} required />
-              <textarea className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="Descrição (opcional)" value={exerciseForm.description} onChange={(e) => setExerciseForm((prev) => ({ ...prev, description: e.target.value }))} />
-              <input type="number" min={1} className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2" placeholder="Fase" value={exerciseForm.phase} onChange={(e) => setExerciseForm((prev) => ({ ...prev, phase: Number(e.target.value) }))} />
+              <input className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="Título do exercício" value={exerciseForm.title} onChange={(e) => setExerciseForm((prev) => ({ ...prev, title: e.target.value }))} required />
+              <textarea className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="Descrição (opcional)" value={exerciseForm.description} onChange={(e) => setExerciseForm((prev) => ({ ...prev, description: e.target.value }))} />
+              <input type="number" min={1} className="w-full border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]" placeholder="Fase" value={exerciseForm.phase} onChange={(e) => setExerciseForm((prev) => ({ ...prev, phase: Number(e.target.value) }))} />
               <button disabled={saving} className="w-full bg-[#096196] text-white rounded-lg py-2 font-semibold hover:bg-[#0B78B7] disabled:opacity-60">Adicionar Exercício</button>
             </form>
             <div className="mt-4 space-y-2 max-h-64 overflow-auto">
               {data.exercises.map((exercise) => (
-                <div key={exercise.id} className="border border-[#CBE9FB] rounded-lg p-3 flex items-center justify-between gap-3">
+                <div key={exercise.id} className="bg-[#F3FAFF] border border-[#D6EEFC] rounded-lg p-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-[#096196]">{exercise.title}</p>
                     <p className="text-xs text-[#3A6C89]">Fase {exercise.phase}</p>
                   </div>
-                  <button onClick={() => removeExercise(exercise.id)} className="text-red-600 font-semibold text-sm">Excluir</button>
+                  <button onClick={() => removeExercise(exercise.id)} className="text-red-600 font-semibold text-sm hover:text-red-700">Excluir</button>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB]">
+        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
           <h2 className="text-lg font-bold text-[#096196] mb-4">Registro de Interações</h2>
           <form onSubmit={addInteraction} className="flex flex-col md:flex-row gap-3">
             <input
-              className="flex-1 border border-[#CBE9FB] rounded-lg px-3 py-2"
+              className="flex-1 border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
               placeholder="Adicionar orientação/interação para telemonitoramento"
               value={interactionNote}
               onChange={(e) => setInteractionNote(e.target.value)}
@@ -396,7 +426,7 @@ export default function PatientProfilePage() {
           </form>
           <div className="mt-4 space-y-2 max-h-72 overflow-auto">
             {data.interactions.map((item) => (
-              <div key={item.id} className="border border-[#CBE9FB] rounded-lg p-3">
+              <div key={item.id} className="bg-[#F3FAFF] border border-[#D6EEFC] rounded-lg p-3">
                 <p className="text-[#096196]">{item.note}</p>
                 <p className="text-xs text-[#3A6C89] mt-1">
                   {item.author.name} ({item.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) • {new Date(item.createdAt).toLocaleString('pt-BR')}
