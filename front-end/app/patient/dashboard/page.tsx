@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type DashboardData = {
   patient: {
@@ -11,7 +11,15 @@ type DashboardData = {
     user: { name: string };
   };
   videos: Array<{ id: string; title: string; videoUrl: string; phase: number }>;
-  exercises: Array<{ id: string; title: string; description?: string | null; phase: number }>;
+  exercises: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    phase: number;
+    todayCompleted: boolean;
+    lastCheckAt?: string | null;
+    lastCheckCompleted?: boolean | null;
+  }>;
   sessions: Array<{ id: string; completed: boolean; painLevel: number; date: string }>;
   interactions: Array<{
     id: string;
@@ -74,10 +82,23 @@ export default function PatientDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [completedAll, setCompletedAll] = useState(false);
   const [painLevel, setPainLevel] = useState(0);
-  const [interactionNote, setInteractionNote] = useState('');
+  const [chatMessage, setChatMessage] = useState('');
   const [isSavingSession, setIsSavingSession] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [checkingExerciseId, setCheckingExerciseId] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    if (!auth) return;
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me`, {
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+      },
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Erro ao carregar seu perfil.');
+    setData(result);
+  }, [auth]);
 
   useEffect(() => {
     if (!auth) {
@@ -88,14 +109,7 @@ export default function PatientDashboardPage() {
       setIsLoading(true);
       setError('');
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me`, {
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-          },
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message || 'Erro ao carregar seu perfil.');
-        setData(result);
+        await loadDashboard();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar dashboard.');
       } finally {
@@ -103,7 +117,7 @@ export default function PatientDashboardPage() {
       }
     };
     loadData();
-  }, [auth, router]);
+  }, [auth, router, loadDashboard]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -124,24 +138,69 @@ export default function PatientDashboardPage() {
           Authorization: `Bearer ${auth.token}`,
         },
         body: JSON.stringify({
-          completed: completedAll,
           painLevel,
-          interactionNote: interactionNote.trim() || undefined,
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Erro ao salvar checklist.');
-      setInteractionNote('');
-
-      const refresh = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
-      const refreshed = await refresh.json();
-      if (refresh.ok) setData(refreshed);
+      if (!response.ok) throw new Error(result.message || 'Erro ao salvar registro de dor.');
+      await loadDashboard();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar checklist.');
+      setError(err instanceof Error ? err.message : 'Erro ao salvar registro de dor.');
     } finally {
       setIsSavingSession(false);
+    }
+  };
+
+  const handleExerciseCheck = async (exerciseId: string, completed: boolean) => {
+    if (!auth) return;
+    setCheckingExerciseId(exerciseId);
+    setError('');
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me/exercises/${exerciseId}/check`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${auth.token}`,
+          },
+          body: JSON.stringify({ completed }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Erro ao atualizar exercício.');
+      await loadDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar exercício.');
+    } finally {
+      setCheckingExerciseId(null);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth || !chatMessage.trim()) return;
+    setIsSendingMessage(true);
+    setError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me/interactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({
+          note: chatMessage.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Erro ao enviar mensagem.');
+      setChatMessage('');
+      await loadDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar mensagem.');
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -246,17 +305,8 @@ export default function PatientDashboardPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <h2 className="text-xl font-bold text-[#096196] mb-4">Checklist Diário e Registro EVA</h2>
+            <h2 className="text-xl font-bold text-[#096196] mb-4">Registro Diário de Dor (EVA)</h2>
             <form onSubmit={handleSessionSubmit} className="space-y-4">
-              <label className="flex items-center gap-3 text-[#096196] font-semibold">
-                <input
-                  type="checkbox"
-                  checked={completedAll}
-                  onChange={(e) => setCompletedAll(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                Concluí os exercícios do dia
-              </label>
               <div>
                 <label className="block text-sm font-semibold text-[#3A6C89] mb-2">Dor atual (EVA 0–10)</label>
                 <input
@@ -269,35 +319,38 @@ export default function PatientDashboardPage() {
                 />
                 <p className="text-[#096196] font-bold mt-1">{painLevel}/10</p>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#3A6C89] mb-2">
-                  Registro de interações (opcional)
-                </label>
-                <textarea
-                  value={interactionNote}
-                  onChange={(e) => setInteractionNote(e.target.value)}
-                  className="w-full border border-[#CBE9FB] rounded-lg p-3 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
-                  placeholder="Como foi o treino hoje?"
-                />
-              </div>
               <button
                 type="submit"
                 disabled={isSavingSession}
                 className="bg-[#096196] text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-60"
               >
-                {isSavingSession ? 'Salvando...' : 'Salvar Registro Diário'}
+                {isSavingSession ? 'Salvando...' : 'Salvar Dor do Dia'}
               </button>
             </form>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <h2 className="text-xl font-bold text-[#096196] mb-4">Interações</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#E5F5FF] text-[#096196]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-[#096196]">Chat com Fisioterapeuta</h2>
+            </div>
             {data.interactions.length === 0 ? (
-              <p className="text-[#3A6C89]">Nenhuma interação registrada até o momento.</p>
+              <p className="text-[#3A6C89]">Nenhuma mensagem ainda. Envie uma atualização para seu fisioterapeuta.</p>
             ) : (
-              <div className="space-y-2 max-h-72 overflow-auto">
+              <div className="space-y-2 max-h-72 overflow-auto mb-4">
                 {data.interactions.map((interaction) => (
-                  <div key={interaction.id} className="border border-[#CBE9FB] rounded-lg p-3 bg-[#F8FCFF]">
+                  <div
+                    key={interaction.id}
+                    className={`rounded-lg p-3 border ${
+                      interaction.author.role === 'patient'
+                        ? 'bg-[#E5F5FF] border-[#CBE9FB]'
+                        : 'bg-[#F8FCFF] border-[#D6EEFC]'
+                    }`}
+                  >
                     <p className="text-[#096196]">{interaction.note}</p>
                     <p className="text-xs text-[#3A6C89] mt-1">
                       {interaction.author.name} ({interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) •{' '}
@@ -307,6 +360,21 @@ export default function PatientDashboardPage() {
                 ))}
               </div>
             )}
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                className="flex-1 border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                placeholder="Digite sua mensagem para o fisioterapeuta"
+              />
+              <button
+                type="submit"
+                disabled={isSendingMessage || !chatMessage.trim()}
+                className="bg-[#096196] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#0B78B7] transition-all disabled:opacity-60"
+              >
+                {isSendingMessage ? 'Enviando...' : 'Enviar'}
+              </button>
+            </form>
           </div>
         </div>
 
@@ -318,10 +386,27 @@ export default function PatientDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {data.exercises.map((exercise) => (
                 <div key={exercise.id} className="border border-[#CBE9FB] rounded-lg p-4 bg-[#F8FCFF]">
-                  <p className="font-semibold text-[#096196]">{exercise.title}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-[#096196]">{exercise.title}</p>
+                    <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#096196] shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={exercise.todayCompleted}
+                        disabled={checkingExerciseId === exercise.id}
+                        onChange={(e) => handleExerciseCheck(exercise.id, e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      {checkingExerciseId === exercise.id ? 'Salvando...' : 'Feito hoje'}
+                    </label>
+                  </div>
                   <p className="text-sm text-[#3A6C89]">Fase {exercise.phase}</p>
                   {exercise.description ? (
                     <p className="text-sm text-[#3A6C89] mt-1">{exercise.description}</p>
+                  ) : null}
+                  {exercise.lastCheckAt ? (
+                    <p className="text-xs text-[#3A6C89] mt-2">
+                      Último check: {new Date(exercise.lastCheckAt).toLocaleDateString('pt-BR')}
+                    </p>
                   ) : null}
                 </div>
               ))}

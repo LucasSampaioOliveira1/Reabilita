@@ -19,6 +19,9 @@ type PatientDashboardResponse = {
     description?: string | null;
     phase: number;
     isActive: boolean;
+    todayCompleted?: boolean;
+    lastCheckAt?: string | null;
+    lastCheckCompleted?: boolean | null;
   }>;
   sessions: Array<{ id: string; completed: boolean; painLevel: number; date: string }>;
   interactions: Array<{
@@ -412,6 +415,18 @@ export default function PatientProfilePage() {
                   <div>
                     <p className="font-semibold text-[#096196]">{exercise.title}</p>
                     <p className="text-xs text-[#3A6C89]">Fase {exercise.phase}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        exercise.todayCompleted ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {exercise.todayCompleted ? 'Feito hoje' : 'Não marcado hoje'}
+                      </span>
+                      {exercise.lastCheckAt ? (
+                        <span className="text-xs text-[#3A6C89]">
+                          Último check: {new Date(exercise.lastCheckAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <button
                     onClick={() => removeExercise(exercise.id)}

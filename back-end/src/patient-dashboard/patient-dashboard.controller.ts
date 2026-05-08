@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CreatePatientExerciseDto } from './dto/create-patient-exercise.dto';
+import { CreatePatientExerciseCheckDto } from './dto/create-patient-exercise-check.dto';
 import { CreatePatientInteractionDto } from './dto/create-patient-interaction.dto';
 import { CreatePatientSessionDto } from './dto/create-patient-session.dto';
 import { CreatePatientVideoDto } from './dto/create-patient-video.dto';
@@ -40,6 +41,23 @@ export class PatientDashboardController {
     @Body() dto: CreatePatientSessionDto,
   ) {
     return this.patientDashboardService.savePatientDailySession(req.user, dto);
+  }
+
+  @Post('me/exercises/:exerciseId/check')
+  updateMyExerciseCheck(
+    @Req() req: JwtRequest,
+    @Param('exerciseId') exerciseId: string,
+    @Body() dto: CreatePatientExerciseCheckDto,
+  ) {
+    return this.patientDashboardService.savePatientExerciseCheck(req.user, exerciseId, dto);
+  }
+
+  @Post('me/interactions')
+  addMyInteraction(
+    @Req() req: JwtRequest,
+    @Body() dto: CreatePatientInteractionDto,
+  ) {
+    return this.patientDashboardService.addPatientInteraction(req.user, dto);
   }
 
   @Get('patient/:patientId')

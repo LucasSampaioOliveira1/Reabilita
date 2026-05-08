@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PatientsRepository } from '../patients/repositories/patients.repository';
 import { CreatePatientExerciseDto } from './dto/create-patient-exercise.dto';
+import { CreatePatientExerciseCheckDto } from './dto/create-patient-exercise-check.dto';
 import { CreatePatientInteractionDto } from './dto/create-patient-interaction.dto';
 import { CreatePatientSessionDto } from './dto/create-patient-session.dto';
 import { CreatePatientVideoDto } from './dto/create-patient-video.dto';
@@ -82,7 +83,8 @@ export class PatientDashboardService {
       throw new NotFoundException('Paciente não encontrado.');
     }
 
-    const [videos, exercises, sessions, interactions] = await Promise.all([
+    const { start, end } = this.getTodayRange();
+    const [videos, exercises, sessions, interactions, todayChecks, latestChecks] = await Promise.all([
       this.prisma.patientVideo.findMany({
         where: { patientId },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
@@ -110,9 +112,43 @@ export class PatientDashboardService {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
+      this.prisma.patientExerciseCheck.findMany({
+        where: {
+          patientId,
+          date: {
+            gte: start,
+            lte: end,
+          },
+        },
+      }),
+      this.prisma.patientExerciseCheck.findMany({
+        where: { patientId },
+        orderBy: { date: 'desc' },
+      }),
     ]);
 
-    const { start, end } = this.getTodayRange();
+    const todayCheckMap = new Map(todayChecks.map((check) => [check.exerciseId, check.completed]));
+    const latestCheckMap = new Map<
+      string,
+      { date: Date; completed: boolean }
+    >();
+
+    for (const check of latestChecks) {
+      if (!latestCheckMap.has(check.exerciseId)) {
+        latestCheckMap.set(check.exerciseId, { date: check.date, completed: check.completed });
+      }
+    }
+
+    const exercisesWithChecks = exercises.map((exercise) => {
+      const latest = latestCheckMap.get(exercise.id);
+      return {
+        ...exercise,
+        todayCompleted: todayCheckMap.get(exercise.id) ?? false,
+        lastCheckAt: latest?.date ?? null,
+        lastCheckCompleted: latest?.completed ?? null,
+      };
+    });
+
     const hasTodaySession = sessions.some(
       (session) => session.date >= start && session.date <= end,
     );
@@ -120,7 +156,7 @@ export class PatientDashboardService {
     return {
       patient,
       videos,
-      exercises,
+      exercises: exercisesWithChecks,
       sessions,
       interactions,
       summary: this.buildSummary(sessions),
@@ -139,6 +175,30 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
+    const [activeExercises, todayChecks] = await Promise.all([
+      this.prisma.patientExercise.findMany({
+        where: {
+          patientId: patient.id,
+          isActive: true,
+        },
+        select: { id: true },
+      }),
+      this.prisma.patientExerciseCheck.findMany({
+        where: {
+          patientId: patient.id,
+          date: {
+            gte: start,
+            lte: end,
+          },
+        },
+      }),
+    ]);
+
+    const completedByExercise = new Map(todayChecks.map((check) => [check.exerciseId, check.completed]));
+    const completedAllExercises =
+      activeExercises.length > 0 &&
+      activeExercises.every((exercise) => completedByExercise.get(exercise.id) === true);
+
     const existing = await this.prisma.session.findFirst({
       where: {
         patientId: patient.id,
@@ -153,30 +213,89 @@ export class PatientDashboardService {
       ? await this.prisma.session.update({
           where: { id: existing.id },
           data: {
-            completed: dto.completed,
+            completed: completedAllExercises,
             painLevel: dto.painLevel,
           },
         })
       : await this.prisma.session.create({
           data: {
             patientId: patient.id,
-            completed: dto.completed,
+            completed: completedAllExercises,
             painLevel: dto.painLevel,
             date: new Date(),
           },
         });
 
-    if (dto.interactionNote?.trim()) {
-      await this.prisma.patientInteraction.create({
-        data: {
-          patientId: patient.id,
-          authorId: user.sub,
-          note: dto.interactionNote.trim(),
-        },
-      });
+    return session;
+  }
+
+  async savePatientExerciseCheck(
+    user: JwtUser,
+    exerciseId: string,
+    dto: CreatePatientExerciseCheckDto,
+  ) {
+    this.ensurePatient(user);
+    const patient = await this.patientsRepository.findByUserId(user.sub);
+    if (!patient) {
+      throw new NotFoundException('Perfil de paciente não encontrado.');
     }
 
-    return session;
+    const exercise = await this.prisma.patientExercise.findUnique({
+      where: { id: exerciseId },
+      select: {
+        id: true,
+        patientId: true,
+      },
+    });
+
+    if (!exercise || exercise.patientId !== patient.id) {
+      throw new ForbiddenException('Você só pode atualizar exercícios do seu próprio perfil.');
+    }
+
+    const { start } = this.getTodayRange();
+    return this.prisma.patientExerciseCheck.upsert({
+      where: {
+        patientId_exerciseId_date: {
+          patientId: patient.id,
+          exerciseId,
+          date: start,
+        },
+      },
+      update: {
+        completed: dto.completed,
+      },
+      create: {
+        patientId: patient.id,
+        exerciseId,
+        date: start,
+        completed: dto.completed,
+      },
+    });
+  }
+
+  async addPatientInteraction(user: JwtUser, dto: CreatePatientInteractionDto) {
+    this.ensurePatient(user);
+    const patient = await this.patientsRepository.findByUserId(user.sub);
+    if (!patient) {
+      throw new NotFoundException('Perfil de paciente não encontrado.');
+    }
+
+    return this.prisma.patientInteraction.create({
+      data: {
+        patientId: patient.id,
+        authorId: user.sub,
+        note: dto.note.trim(),
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
   }
 
   async addVideo(user: JwtUser, patientId: string, dto: CreatePatientVideoDto) {

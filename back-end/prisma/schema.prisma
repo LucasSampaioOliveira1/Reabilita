@@ -44,6 +44,7 @@ model Patient {
   sessions     Session[]
   videos       PatientVideo[]
   exercises    PatientExercise[]
+  exerciseChecks PatientExerciseCheck[]
   interactions PatientInteraction[]
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime             @default(now())
@@ -103,10 +104,27 @@ model PatientExercise {
   phase       Int      @default(1)
   isActive    Boolean  @default(true)
   patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  checks      PatientExerciseCheck[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([patientId, phase, isActive])
+}
+
+model PatientExerciseCheck {
+  id         String          @id @default(cuid())
+  patientId  String
+  exerciseId String
+  date       DateTime
+  completed  Boolean         @default(false)
+  patient    Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  exercise   PatientExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([patientId, exerciseId, date])
+  @@index([patientId, date])
+  @@index([exerciseId, date])
 }
 
 model PatientInteraction {
