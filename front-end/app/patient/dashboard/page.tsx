@@ -16,7 +16,7 @@ type DashboardData = {
     title: string;
     description?: string | null;
     phase: number;
-    todayCompleted: boolean;
+    completed: boolean;
     lastCheckAt?: string | null;
     lastCheckCompleted?: boolean | null;
   }>;
@@ -391,12 +391,12 @@ export default function PatientDashboardPage() {
                     <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#096196] shrink-0">
                       <input
                         type="checkbox"
-                        checked={exercise.todayCompleted}
+                        checked={exercise.completed}
                         disabled={checkingExerciseId === exercise.id}
                         onChange={(e) => handleExerciseCheck(exercise.id, e.target.checked)}
                         className="h-4 w-4"
                       />
-                      {checkingExerciseId === exercise.id ? 'Salvando...' : 'Feito hoje'}
+                      {checkingExerciseId === exercise.id ? 'Salvando...' : exercise.completed ? 'Concluído' : 'Não concluído'}
                     </label>
                   </div>
                   <p className="text-sm text-[#3A6C89]">Fase {exercise.phase}</p>
@@ -405,7 +405,7 @@ export default function PatientDashboardPage() {
                   ) : null}
                   {exercise.lastCheckAt ? (
                     <p className="text-xs text-[#3A6C89] mt-2">
-                      Último check: {new Date(exercise.lastCheckAt).toLocaleDateString('pt-BR')}
+                      Última atualização: {new Date(exercise.lastCheckAt).toLocaleString('pt-BR')}
                     </p>
                   ) : null}
                 </div>

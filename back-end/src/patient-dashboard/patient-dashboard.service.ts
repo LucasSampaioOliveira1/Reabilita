@@ -84,7 +84,7 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
-    const [videos, exercises, sessions, interactions, todayChecks, latestChecks] = await Promise.all([
+    const [videos, exercises, sessions, interactions, latestChecks] = await Promise.all([
       this.prisma.patientVideo.findMany({
         where: { patientId },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
@@ -113,21 +113,11 @@ export class PatientDashboardService {
         take: 50,
       }),
       this.prisma.patientExerciseCheck.findMany({
-        where: {
-          patientId,
-          date: {
-            gte: start,
-            lte: end,
-          },
-        },
-      }),
-      this.prisma.patientExerciseCheck.findMany({
         where: { patientId },
         orderBy: { date: 'desc' },
       }),
     ]);
 
-    const todayCheckMap = new Map(todayChecks.map((check) => [check.exerciseId, check.completed]));
     const latestCheckMap = new Map<
       string,
       { date: Date; completed: boolean }
@@ -143,7 +133,7 @@ export class PatientDashboardService {
       const latest = latestCheckMap.get(exercise.id);
       return {
         ...exercise,
-        todayCompleted: todayCheckMap.get(exercise.id) ?? false,
+        completed: latest?.completed ?? false,
         lastCheckAt: latest?.date ?? null,
         lastCheckCompleted: latest?.completed ?? null,
       };
@@ -160,9 +150,7 @@ export class PatientDashboardService {
       sessions,
       interactions,
       summary: this.buildSummary(sessions),
-      notifications: hasTodaySession
-        ? []
-        : ['Lembrete: registre seu checklist diário e nível de dor (EVA).'],
+      notifications: hasTodaySession ? [] : ['Lembrete: registre seu nível de dor (EVA).'],
     };
   }
 
@@ -175,29 +163,31 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
-    const [activeExercises, todayChecks] = await Promise.all([
-      this.prisma.patientExercise.findMany({
-        where: {
-          patientId: patient.id,
-          isActive: true,
+    const activeExercises = await this.prisma.patientExercise.findMany({
+      where: {
+        patientId: patient.id,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    const latestChecks = await this.prisma.patientExerciseCheck.findMany({
+      where: {
+        patientId: patient.id,
+        exerciseId: {
+          in: activeExercises.map((exercise) => exercise.id),
         },
-        select: { id: true },
-      }),
-      this.prisma.patientExerciseCheck.findMany({
-        where: {
-          patientId: patient.id,
-          date: {
-            gte: start,
-            lte: end,
-          },
-        },
-      }),
-    ]);
-
-    const completedByExercise = new Map(todayChecks.map((check) => [check.exerciseId, check.completed]));
+      },
+      orderBy: { date: 'desc' },
+    });
+    const latestByExercise = new Map<string, boolean>();
+    for (const check of latestChecks) {
+      if (!latestByExercise.has(check.exerciseId)) {
+        latestByExercise.set(check.exerciseId, check.completed);
+      }
+    }
     const completedAllExercises =
       activeExercises.length > 0 &&
-      activeExercises.every((exercise) => completedByExercise.get(exercise.id) === true);
+      activeExercises.every((exercise) => latestByExercise.get(exercise.id) === true);
 
     const existing = await this.prisma.session.findFirst({
       where: {
@@ -252,22 +242,11 @@ export class PatientDashboardService {
       throw new ForbiddenException('Você só pode atualizar exercícios do seu próprio perfil.');
     }
 
-    const { start } = this.getTodayRange();
-    return this.prisma.patientExerciseCheck.upsert({
-      where: {
-        patientId_exerciseId_date: {
-          patientId: patient.id,
-          exerciseId,
-          date: start,
-        },
-      },
-      update: {
-        completed: dto.completed,
-      },
-      create: {
+    return this.prisma.patientExerciseCheck.create({
+      data: {
         patientId: patient.id,
         exerciseId,
-        date: start,
+        date: new Date(),
         completed: dto.completed,
       },
     });

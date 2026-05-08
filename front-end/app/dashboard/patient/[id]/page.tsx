@@ -19,7 +19,7 @@ type PatientDashboardResponse = {
     description?: string | null;
     phase: number;
     isActive: boolean;
-    todayCompleted?: boolean;
+    completed?: boolean;
     lastCheckAt?: string | null;
     lastCheckCompleted?: boolean | null;
   }>;
@@ -417,13 +417,13 @@ export default function PatientProfilePage() {
                     <p className="text-xs text-[#3A6C89]">Fase {exercise.phase}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        exercise.todayCompleted ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                        exercise.completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {exercise.todayCompleted ? 'Feito hoje' : 'Não marcado hoje'}
+                        {exercise.completed ? 'Concluído' : 'Não concluído'}
                       </span>
                       {exercise.lastCheckAt ? (
                         <span className="text-xs text-[#3A6C89]">
-                          Último check: {new Date(exercise.lastCheckAt).toLocaleDateString('pt-BR')}
+                          Última atualização: {new Date(exercise.lastCheckAt).toLocaleString('pt-BR')}
                         </span>
                       ) : null}
                     </div>
