@@ -1,5 +1,6 @@
 'use client';
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -646,11 +647,15 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex items-center space-x-2 sm:justify-end">
-                          <button className="p-2 bg-white border border-[#CBE9FB] text-[#096196] hover:bg-[#096196] hover:text-white shadow-sm rounded-lg transition-all" title="Ver Perfil">
+                          <Link
+                            href={`/dashboard/patient/${patient.id}`}
+                            className="p-2 bg-white border border-[#CBE9FB] text-[#096196] hover:bg-[#096196] hover:text-white shadow-sm rounded-lg transition-all"
+                            title="Ver Perfil do Paciente"
+                          >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                          </button>
+                          </Link>
                           <button
                             onClick={() => openEditModal(patient)}
                             className="p-2 bg-white border border-green-200 text-green-600 hover:bg-green-600 hover:text-white shadow-sm rounded-lg transition-all"

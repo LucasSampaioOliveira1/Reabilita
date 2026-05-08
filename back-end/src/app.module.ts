@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { PatientsModule } from './patients/patients.module';
+import { PatientDashboardModule } from './patient-dashboard/patient-dashboard.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { UsersModule } from './users/users.module';
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     PatientsModule,
+    PatientDashboardModule,
     ExercisesModule,
     SessionsModule,
     ChatModule,

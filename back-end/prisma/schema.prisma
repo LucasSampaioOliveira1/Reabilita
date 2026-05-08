@@ -24,25 +24,30 @@ model User {
   patientProfile   Patient?
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+  authoredVideos   PatientVideo[]       @relation("VideoAuthor")
+  interactions     PatientInteraction[] @relation("InteractionAuthor")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
 
 model Patient {
-  id        String    @id @default(cuid())
-  userId    String    @unique
-  cpf       String    @unique
-  phone     String    @default("")
-  address   String
-  birthDate DateTime
-  age       Int
-  condition String
-  phase     Int       @default(1)
-  status    PatientStatus @default(IN_PROGRESS)
-  sessions  Session[]
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  cpf          String               @unique
+  phone        String               @default("")
+  address      String
+  birthDate    DateTime
+  age          Int
+  condition    String
+  phase        Int                  @default(1)
+  status       PatientStatus        @default(IN_PROGRESS)
+  sessions     Session[]
+  videos       PatientVideo[]
+  exercises    PatientExercise[]
+  interactions PatientInteraction[]
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([phase])
   @@index([status])
@@ -73,6 +78,49 @@ model Session {
 
   @@index([patientId])
   @@index([date])
+}
+
+model PatientVideo {
+  id          String   @id @default(cuid())
+  patientId   String
+  title       String
+  videoUrl    String
+  phase       Int      @default(1)
+  createdById String?
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("VideoAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([patientId, phase])
+}
+
+model PatientExercise {
+  id          String   @id @default(cuid())
+  patientId   String
+  title       String
+  description String?
+  phase       Int      @default(1)
+  isActive    Boolean  @default(true)
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([patientId, phase, isActive])
+}
+
+model PatientInteraction {
+  id        String   @id @default(cuid())
+  patientId String
+  authorId  String
+  note      String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  author    User     @relation("InteractionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId, createdAt])
+  @@index([authorId])
 }
 
 model Message {
