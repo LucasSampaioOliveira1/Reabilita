@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const CHAT_SYNC_INTERVAL_OPEN_MS = 2500;
 const CHAT_SYNC_INTERVAL_IDLE_MS = 5000;
+const PATIENT_CHAT_READ_STORAGE_PREFIX = 'patient-chat:read-physio-count:';
 
 type DashboardData = {
   patient: {
@@ -36,9 +37,29 @@ type DashboardData = {
     totalExercises: number;
     completedExercises: number;
   };
+  physioMessageCount: number;
   hasTodayPainRecord: boolean;
   notifications: string[];
 };
+
+function getPatientChatReadStorageKey(patientId: string) {
+  return `${PATIENT_CHAT_READ_STORAGE_PREFIX}${patientId}`;
+}
+
+function getStoredPatientReadCount(patientId: string) {
+  if (typeof window === 'undefined') return 0;
+
+  const rawValue = localStorage.getItem(getPatientChatReadStorageKey(patientId));
+  if (!rawValue) return 0;
+
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasStoredPatientReadCount(patientId: string) {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(getPatientChatReadStorageKey(patientId)) !== null;
+}
 
 function getPatientAuth() {
   if (typeof window === 'undefined') return null;
@@ -92,7 +113,18 @@ export default function PatientDashboardPage() {
   const [checkingExerciseId, setCheckingExerciseId] = useState<string | null>(null);
   const [isPainConfirmOpen, setIsPainConfirmOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [readPhysioMessageCount, setReadPhysioMessageCount] = useState(0);
   const chatMessagesRef = useRef<HTMLDivElement | null>(null);
+  const isChatOpenRef = useRef(false);
+  const activePatientIdRef = useRef<string | null>(null);
+
+  const markPhysioMessagesAsRead = useCallback((patientId: string, count: number) => {
+    setReadPhysioMessageCount(count);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(getPatientChatReadStorageKey(patientId), String(count));
+    }
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     if (!auth) return;
@@ -104,6 +136,20 @@ export default function PatientDashboardPage() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Erro ao carregar seu perfil.');
+    if (activePatientIdRef.current !== result.patient.id) {
+      activePatientIdRef.current = result.patient.id;
+      const storedReadCount = hasStoredPatientReadCount(result.patient.id)
+        ? getStoredPatientReadCount(result.patient.id)
+        : result.physioMessageCount;
+      setReadPhysioMessageCount(storedReadCount);
+
+      if (!hasStoredPatientReadCount(result.patient.id) && typeof window !== 'undefined') {
+        localStorage.setItem(
+          getPatientChatReadStorageKey(result.patient.id),
+          String(storedReadCount),
+        );
+      }
+    }
     setData(result);
   }, [auth]);
 
@@ -132,9 +178,14 @@ export default function PatientDashboardPage() {
             ? {
                 ...prev,
                 interactions: result.interactions,
+                physioMessageCount: result.physioMessageCount,
               }
             : prev,
         );
+
+        if (activePatientIdRef.current && isChatOpenRef.current) {
+          markPhysioMessagesAsRead(activePatientIdRef.current, result.physioMessageCount);
+        }
       } catch (err) {
         if (!silent) {
           setError(
@@ -143,7 +194,7 @@ export default function PatientDashboardPage() {
         }
       }
     },
-    [auth],
+    [auth, markPhysioMessagesAsRead],
   );
 
   useEffect(() => {
@@ -169,6 +220,10 @@ export default function PatientDashboardPage() {
     if (!isChatOpen || !chatMessagesRef.current) return;
     chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
   }, [isChatOpen, data?.interactions.length]);
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+  }, [isChatOpen]);
 
   useEffect(() => {
     if (!auth) return;
@@ -315,6 +370,22 @@ export default function PatientDashboardPage() {
   }
 
   const hasTodayPainRecord = data.hasTodayPainRecord;
+  const unreadPhysioMessages = Math.max(
+    0,
+    data.physioMessageCount - readPhysioMessageCount,
+  );
+
+  const handleToggleChat = () => {
+    setIsChatOpen((prev) => {
+      const next = !prev;
+
+      if (next) {
+        markPhysioMessagesAsRead(data.patient.id, data.physioMessageCount);
+      }
+
+      return next;
+    });
+  };
 
   return (
     <main className="min-h-screen bg-[#E5F5FF]">
@@ -626,7 +697,7 @@ export default function PatientDashboardPage() {
 
         <button
           type="button"
-          onClick={() => setIsChatOpen((prev) => !prev)}
+          onClick={handleToggleChat}
           className="inline-flex items-center gap-3 rounded-full bg-[#096196] px-5 py-4 text-white shadow-2xl hover:bg-[#0B78B7] transition-all"
         >
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
@@ -637,6 +708,11 @@ export default function PatientDashboardPage() {
           <span className="font-semibold">
             {isChatOpen ? 'Ocultar Chat' : 'Abrir Chat'}
           </span>
+          {!isChatOpen && unreadPhysioMessages > 0 ? (
+            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold text-[#096196]">
+              {unreadPhysioMessages}
+            </span>
+          ) : null}
         </button>
       </div>
     </main>

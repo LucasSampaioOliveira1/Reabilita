@@ -58,6 +58,17 @@ export class PatientDashboardService {
     });
   }
 
+  private countPatientMessagesByAuthorRole(patientId: string, role: string) {
+    return this.prisma.patientInteraction.count({
+      where: {
+        patientId,
+        author: {
+          is: { role },
+        },
+      },
+    });
+  }
+
   private buildSummary(
     painRecords: Array<{ completed: boolean; painLevel: number; date: Date }>,
     exercises: Array<{ completed: boolean }>,
@@ -94,7 +105,8 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
-    const [videos, exercises, painRecords, latestInteractions, latestChecks] = await Promise.all([
+    const [videos, exercises, painRecords, latestInteractions, latestChecks, physioMessageCount] =
+      await Promise.all([
       this.prisma.patientVideo.findMany({
         where: { patientId },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
@@ -113,6 +125,7 @@ export class PatientDashboardService {
         where: { patientId },
         orderBy: { date: 'desc' },
       }),
+      this.countPatientMessagesByAuthorRole(patientId, 'physio'),
     ]);
 
     const latestCheckMap = new Map<
@@ -145,6 +158,7 @@ export class PatientDashboardService {
       exercises: exercisesWithChecks,
       sessions: painRecords,
       interactions: latestInteractions,
+      physioMessageCount,
       summary: this.buildSummary(painRecords, exercisesWithChecks),
       hasTodayPainRecord,
       notifications: hasTodayPainRecord
@@ -386,6 +400,27 @@ export class PatientDashboardService {
       },
     });
 
+    const patientIds = patients.map((patient) => patient.id);
+    const patientMessageCounts = patientIds.length
+      ? await this.prisma.patientInteraction.groupBy({
+          by: ['patientId'],
+          where: {
+            patientId: {
+              in: patientIds,
+            },
+            author: {
+              is: { role: 'patient' },
+            },
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : [];
+    const patientMessageCountMap = new Map(
+      patientMessageCounts.map((entry) => [entry.patientId, entry._count._all]),
+    );
+
     return patients
       .map((patient) => ({
         patientId: patient.id,
@@ -394,6 +429,7 @@ export class PatientDashboardService {
         condition: patient.condition,
         phase: patient.phase,
         status: patient.status,
+        patientMessageCount: patientMessageCountMap.get(patient.id) ?? 0,
         latestMessage: patient.interactions[0]
           ? {
               note: patient.interactions[0].note,
@@ -416,6 +452,7 @@ export class PatientDashboardService {
 
     return {
       interactions: await this.listPatientInteractions(patient.id, 100),
+      physioMessageCount: await this.countPatientMessagesByAuthorRole(patient.id, 'physio'),
     };
   }
 

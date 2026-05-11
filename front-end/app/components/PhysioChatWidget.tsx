@@ -12,6 +12,7 @@ type ChatListItem = {
   condition: string;
   phase: number;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
+  patientMessageCount: number;
   latestMessage: {
     note: string;
     createdAt: string;
@@ -57,6 +58,7 @@ type PhysioChatWidgetProps = {
 
 const CHAT_OPEN_STORAGE_KEY = 'physio-chat:is-open';
 const CHAT_PATIENT_STORAGE_KEY = 'physio-chat:selected-patient';
+const CHAT_READ_STORAGE_KEY = 'physio-chat:read-counts';
 
 function getPhysioAuth(): PhysioAuth | null {
   if (typeof window === 'undefined') return null;
@@ -88,10 +90,27 @@ function getStoredSelectedPatientId() {
   return localStorage.getItem(CHAT_PATIENT_STORAGE_KEY);
 }
 
+function getStoredReadCounts() {
+  if (typeof window === 'undefined') return {} as Record<string, number>;
+
+  try {
+    const rawValue = localStorage.getItem(CHAT_READ_STORAGE_KEY);
+    if (!rawValue) return {};
+    const parsed = JSON.parse(rawValue) as Record<string, number>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function getStatusLabel(status: ChatListItem['status']) {
   if (status === 'COMPLETED') return 'Finalizado';
   if (status === 'DEMITIDO') return 'Demitido';
   return 'Em andamento';
+}
+
+function countIncomingPatientMessages(interactions: ChatConversation['interactions']) {
+  return interactions.filter((interaction) => interaction.author.role === 'patient').length;
 }
 
 export default function PhysioChatWidget({
@@ -102,6 +121,7 @@ export default function PhysioChatWidget({
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     getStoredSelectedPatientId,
   );
+  const [readCounts, setReadCounts] = useState<Record<string, number>>(getStoredReadCounts);
   const [searchValue, setSearchValue] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -111,6 +131,20 @@ export default function PhysioChatWidget({
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const isOpenRef = useRef(isOpen);
+
+  const markPatientAsRead = useCallback((patientId: string, messageCount: number) => {
+    setReadCounts((prev) => {
+      if (prev[patientId] === messageCount) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [patientId]: messageCount,
+      };
+    });
+  }, []);
 
   const loadChatList = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!auth) return;
@@ -137,6 +171,19 @@ export default function PhysioChatWidget({
       }
 
       setChatList(result);
+      setReadCounts((prev) => {
+        let hasChanges = false;
+        const next = { ...prev };
+
+        for (const chat of result as ChatListItem[]) {
+          if (typeof next[chat.patientId] === 'undefined') {
+            next[chat.patientId] = chat.patientMessageCount;
+            hasChanges = true;
+          }
+        }
+
+        return hasChanges ? next : prev;
+      });
     } catch (err) {
       if (!silent) {
         setError(
@@ -176,6 +223,12 @@ export default function PhysioChatWidget({
         }
 
         setConversation(result);
+        if (isOpenRef.current) {
+          const unreadBaseCount = countIncomingPatientMessages(
+            result.interactions as ChatConversation['interactions'],
+          );
+          markPatientAsRead(patientId, unreadBaseCount);
+        }
       } catch (err) {
         if (!silent) {
           setError(
@@ -188,8 +241,12 @@ export default function PhysioChatWidget({
         }
       }
     },
-    [auth],
+    [auth, markPatientAsRead],
   );
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     if (!auth) return;
@@ -238,6 +295,11 @@ export default function PhysioChatWidget({
     if (typeof window === 'undefined') return;
     localStorage.setItem(CHAT_OPEN_STORAGE_KEY, String(isOpen));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(CHAT_READ_STORAGE_KEY, JSON.stringify(readCounts));
+  }, [readCounts]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -302,10 +364,38 @@ export default function PhysioChatWidget({
       ? conversation
       : null;
 
+  const unreadCountsByPatient = useMemo(() => {
+    return Object.fromEntries(
+      chatList.map((chat) => [
+        chat.patientId,
+        Math.max(0, chat.patientMessageCount - (readCounts[chat.patientId] ?? 0)),
+      ]),
+    ) as Record<string, number>;
+  }, [chatList, readCounts]);
+
+  const totalUnreadMessages = useMemo(() => {
+    return Object.values(unreadCountsByPatient).reduce((sum, count) => sum + count, 0);
+  }, [unreadCountsByPatient]);
+
   const handleSelectPatient = (patientId: string) => {
     setSelectedPatientId(patientId);
     setConversation(null);
     setIsOpen(true);
+  };
+
+  const handleToggleOpen = () => {
+    setIsOpen((prev) => {
+      const next = !prev;
+
+      if (next && activeConversation && effectiveSelectedPatientId) {
+        const unreadBaseCount = countIncomingPatientMessages(
+          activeConversation.interactions,
+        );
+        markPatientAsRead(effectiveSelectedPatientId, unreadBaseCount);
+      }
+
+      return next;
+    });
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -429,11 +519,18 @@ export default function PhysioChatWidget({
                             </p>
                           </div>
                           {chat.latestMessage ? (
-                            <span className="shrink-0 text-[10px] text-[#3A6C89]">
-                              {new Date(chat.latestMessage.createdAt).toLocaleDateString(
-                                'pt-BR',
-                              )}
-                            </span>
+                            <div className="shrink-0 text-right">
+                              <span className="block text-[10px] text-[#3A6C89]">
+                                {new Date(chat.latestMessage.createdAt).toLocaleDateString(
+                                  'pt-BR',
+                                )}
+                              </span>
+                              {unreadCountsByPatient[chat.patientId] > 0 ? (
+                                <span className="mt-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#096196] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  {unreadCountsByPatient[chat.patientId]}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
                         <p className="mt-2 truncate text-[11px] text-[#3A6C89]">
@@ -569,7 +666,7 @@ export default function PhysioChatWidget({
 
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggleOpen}
         className="inline-flex items-center gap-2.5 rounded-full bg-[#096196] px-4 py-3 text-white shadow-2xl transition-all hover:bg-[#0B78B7]"
       >
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
@@ -585,6 +682,11 @@ export default function PhysioChatWidget({
         <span className="text-sm font-semibold">
           {isOpen ? 'Ocultar Chat' : 'Chat com Pacientes'}
         </span>
+        {!isOpen && totalUnreadMessages > 0 ? (
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#096196]">
+            {totalUnreadMessages}
+          </span>
+        ) : null}
       </button>
     </div>
   );
