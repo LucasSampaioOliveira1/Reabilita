@@ -114,6 +114,28 @@ export class PatientDashboardController {
     return this.patientDashboardService.addInteraction(req.user, patientId, dto);
   }
 
+  @Get('physio/chats')
+  getPhysioChats(@Req() req: JwtRequest) {
+    return this.patientDashboardService.getPhysioChatList(req.user);
+  }
+
+  @Get('physio/chats/:patientId')
+  getPhysioChatConversation(
+    @Req() req: JwtRequest,
+    @Param('patientId') patientId: string,
+  ) {
+    return this.patientDashboardService.getPhysioChatConversation(req.user, patientId);
+  }
+
+  @Post('physio/chats/:patientId/messages')
+  sendPhysioChatMessage(
+    @Req() req: JwtRequest,
+    @Param('patientId') patientId: string,
+    @Body() dto: CreatePatientInteractionDto,
+  ) {
+    return this.patientDashboardService.sendPhysioChatMessage(req.user, patientId, dto);
+  }
+
   @Get('patient/:patientId/report')
   getReport(@Req() req: JwtRequest, @Param('patientId') patientId: string) {
     return this.patientDashboardService.getPatientReport(req.user, patientId);

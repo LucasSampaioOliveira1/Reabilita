@@ -351,6 +351,122 @@ export class PatientDashboardService {
     });
   }
 
+  async getPhysioChatList(user: JwtUser) {
+    this.ensurePhysio(user);
+
+    const patients = await this.prisma.patient.findMany({
+      select: {
+        id: true,
+        condition: true,
+        phase: true,
+        status: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            loginCode: true,
+          },
+        },
+        interactions: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            note: true,
+            createdAt: true,
+            author: {
+              select: {
+                name: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return patients
+      .map((patient) => ({
+        patientId: patient.id,
+        patientName: patient.user.name,
+        loginCode: patient.user.loginCode,
+        condition: patient.condition,
+        phase: patient.phase,
+        status: patient.status,
+        latestMessage: patient.interactions[0]
+          ? {
+              note: patient.interactions[0].note,
+              createdAt: patient.interactions[0].createdAt,
+              author: patient.interactions[0].author,
+            }
+          : null,
+        sortDate: patient.interactions[0]?.createdAt ?? patient.createdAt,
+      }))
+      .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
+      .map(({ sortDate: _sortDate, ...chat }) => chat);
+  }
+
+  async getPhysioChatConversation(user: JwtUser, patientId: string) {
+    this.ensurePhysio(user);
+
+    const patient = await this.patientsRepository.findById(patientId);
+    if (!patient) {
+      throw new NotFoundException('Paciente nao encontrado.');
+    }
+
+    const interactions = await this.prisma.patientInteraction.findMany({
+      where: { patientId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+    });
+
+    return {
+      patient: {
+        id: patient.id,
+        name: patient.user.name,
+        loginCode: patient.user.loginCode,
+        condition: patient.condition,
+        phase: patient.phase,
+        status: patient.status,
+      },
+      interactions,
+    };
+  }
+
+  async sendPhysioChatMessage(
+    user: JwtUser,
+    patientId: string,
+    dto: CreatePatientInteractionDto,
+  ) {
+    this.ensurePhysio(user);
+    await this.ensurePatientExists(patientId);
+
+    return this.prisma.patientInteraction.create({
+      data: {
+        patientId,
+        authorId: user.sub,
+        note: dto.note.trim(),
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
   async getPatientReport(user: JwtUser, patientId: string) {
     this.ensurePhysio(user);
     const dashboard = await this.getPatientDashboardById(patientId);

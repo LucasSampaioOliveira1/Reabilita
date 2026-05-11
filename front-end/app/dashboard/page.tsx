@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import PhysioChatWidget from "../components/PhysioChatWidget";
 
 function getUserFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -1086,6 +1087,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <PhysioChatWidget />
     </main>
   );
 }

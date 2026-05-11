@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import PhysioChatWidget from "../../../components/PhysioChatWidget";
 
 type PatientDashboardResponse = {
   patient: {
@@ -63,7 +64,6 @@ export default function PatientProfilePage() {
 
   const [videoForm, setVideoForm] = useState({ title: '', videoUrl: '', phase: 1 });
   const [exerciseForm, setExerciseForm] = useState({ title: '', description: '', phase: 1 });
-  const [interactionNote, setInteractionNote] = useState('');
 
   const token = useMemo(() => getUser()?.token ?? '', []);
 
@@ -216,31 +216,6 @@ export default function PatientProfilePage() {
       await refreshDashboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao remover exercício.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addInteraction = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!patientId || !interactionNote.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/patient/${patientId}/interactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ note: interactionNote }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Erro ao registrar interação.');
-      setInteractionNote('');
-      await refreshDashboard();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao registrar interação.');
     } finally {
       setSaving(false);
     }
@@ -444,30 +419,6 @@ export default function PatientProfilePage() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
-          <h2 className="text-lg font-bold text-[#096196] mb-4">Registro de Interações</h2>
-          <form onSubmit={addInteraction} className="flex flex-col md:flex-row gap-3">
-            <input
-              className="flex-1 border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
-              placeholder="Adicionar orientação/interação para telemonitoramento"
-              value={interactionNote}
-              onChange={(e) => setInteractionNote(e.target.value)}
-              required
-            />
-            <button disabled={saving} className="bg-[#096196] text-white rounded-lg px-4 py-2 font-semibold hover:bg-[#0B78B7] disabled:opacity-60">Registrar</button>
-          </form>
-          <div className="mt-4 space-y-2 max-h-72 overflow-auto">
-            {data.interactions.map((item) => (
-              <div key={item.id} className="bg-[#F3FAFF] border border-[#D6EEFC] rounded-lg p-3">
-                <p className="text-[#096196]">{item.note}</p>
-                <p className="text-xs text-[#3A6C89] mt-1">
-                  {item.author.name} ({item.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) • {new Date(item.createdAt).toLocaleString('pt-BR')}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
           <h2 className="text-lg font-bold text-[#096196] mb-4">Historico de Dor (EVA)</h2>
           {data.sessions.length === 0 ? (
             <p className="text-[#3A6C89]">Nenhum registro de dor ainda.</p>
@@ -493,6 +444,7 @@ export default function PatientProfilePage() {
           )}
         </div>
       </div>
+      <PhysioChatWidget initialPatientId={patientId} />
     </main>
   );
 }
