@@ -28,7 +28,8 @@ type DashboardData = {
     author: { name: string; role: string };
   }>;
   summary: {
-    avgPain: number;
+    latestPainLevel: number | null;
+    latestPainAt: string | null;
     totalExercises: number;
     completedExercises: number;
   };
@@ -282,8 +283,15 @@ export default function PatientDashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <p className="text-sm font-medium text-[#3A6C89]">Dor Média (EVA)</p>
-            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.avgPain}</p>
+            <p className="text-sm font-medium text-[#3A6C89]">Dor (EVA)</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">
+              {data.summary.latestPainLevel ?? '--'}
+            </p>
+            <p className="text-xs text-[#3A6C89] mt-2">
+              {data.summary.latestPainAt
+                ? `Ultimo registro: ${new Date(data.summary.latestPainAt).toLocaleString('pt-BR')}`
+                : 'Nenhum registro de dor ainda.'}
+            </p>
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <p className="text-sm font-medium text-[#3A6C89]">Exercícios Concluídos</p>
@@ -430,19 +438,24 @@ export default function PatientDashboardPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-          <h2 className="text-xl font-bold text-[#096196] mb-4">Histórico Recente</h2>
+          <h2 className="text-xl font-bold text-[#096196] mb-4">Historico de Dor (EVA)</h2>
           {data.sessions.length === 0 ? (
-            <p className="text-[#3A6C89]">Nenhum registro diário ainda.</p>
+            <p className="text-[#3A6C89]">Nenhum registro de dor ainda.</p>
           ) : (
-            <div className="space-y-2 max-h-72 overflow-auto">
+            <div className="space-y-3 max-h-72 overflow-auto">
               {data.sessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between border border-[#CBE9FB] rounded-lg p-3 bg-[#F8FCFF]">
-                  <span className="text-[#096196] font-semibold">
-                    {new Date(session.date).toLocaleDateString('pt-BR')}
-                  </span>
-                  <span className="text-[#3A6C89]">EVA: {session.painLevel}</span>
-                  <span className={session.completed ? 'text-green-700 font-semibold' : 'text-yellow-700 font-semibold'}>
-                    {session.completed ? 'Concluído' : 'Pendente'}
+                <div
+                  key={session.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border border-[#CBE9FB] rounded-lg p-4 bg-[#F8FCFF]"
+                >
+                  <div>
+                    <span className="text-[#096196] font-semibold block">
+                      {new Date(session.date).toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-xs text-[#3A6C89]">Registro informado por voce</span>
+                  </div>
+                  <span className="inline-flex w-fit items-center rounded-full bg-white px-3 py-1 text-sm font-bold text-[#096196] border border-[#CBE9FB]">
+                    EVA: {session.painLevel}
                   </span>
                 </div>
               ))}

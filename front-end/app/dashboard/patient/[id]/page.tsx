@@ -31,7 +31,8 @@ type PatientDashboardResponse = {
     author: { name: string; role: string };
   }>;
   summary: {
-    avgPain: number;
+    latestPainLevel: number | null;
+    latestPainAt: string | null;
     totalExercises: number;
     completedExercises: number;
   };
@@ -352,8 +353,15 @@ export default function PatientProfilePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
-            <p className="text-sm text-[#3A6C89]">Dor Média (EVA)</p>
-            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.avgPain}</p>
+            <p className="text-sm text-[#3A6C89]">Dor (EVA)</p>
+            <p className="text-2xl font-bold text-[#096196] mt-1">
+              {data.summary.latestPainLevel ?? '--'}
+            </p>
+            <p className="text-xs text-[#3A6C89] mt-2">
+              {data.summary.latestPainAt
+                ? `Ultimo registro: ${new Date(data.summary.latestPainAt).toLocaleString('pt-BR')}`
+                : 'Nenhum registro de dor ainda.'}
+            </p>
           </div>
           <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Exercícios Concluídos</p>
@@ -457,6 +465,32 @@ export default function PatientProfilePage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 border border-[#CBE9FB] shadow-lg">
+          <h2 className="text-lg font-bold text-[#096196] mb-4">Historico de Dor (EVA)</h2>
+          {data.sessions.length === 0 ? (
+            <p className="text-[#3A6C89]">Nenhum registro de dor ainda.</p>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-auto">
+              {data.sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-[#D6EEFC] bg-[#F3FAFF] p-4"
+                >
+                  <div>
+                    <p className="font-semibold text-[#096196]">
+                      {new Date(session.date).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-[#3A6C89]">Registro informado pelo paciente</p>
+                  </div>
+                  <span className="inline-flex w-fit items-center rounded-full bg-white px-3 py-1 text-sm font-bold text-[#096196] border border-[#CBE9FB]">
+                    EVA: {session.painLevel}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </main>

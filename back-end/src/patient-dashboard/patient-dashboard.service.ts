@@ -44,17 +44,13 @@ export class PatientDashboardService {
     painRecords: Array<{ completed: boolean; painLevel: number; date: Date }>,
     exercises: Array<{ completed: boolean }>,
   ) {
-    const total = painRecords.length;
-    const avgPain = total
-      ? Number(
-          (painRecords.reduce((acc, record) => acc + record.painLevel, 0) / total).toFixed(1),
-        )
-      : 0;
+    const latestPainRecord = painRecords[0] ?? null;
     const totalExercises = exercises.length;
     const completedExercises = exercises.filter((exercise) => exercise.completed).length;
 
     return {
-      avgPain,
+      latestPainLevel: latestPainRecord?.painLevel ?? null,
+      latestPainAt: latestPainRecord?.date ?? null,
       totalExercises,
       completedExercises,
     };
@@ -377,7 +373,8 @@ export class PatientDashboardService {
       ['Condição', report.patient.condition],
       ['Fase', String(report.patient.phase)],
       ['Status', report.patient.status],
-      ['Dor média (EVA)', String(report.summary.avgPain)],
+      ['Dor (EVA)', String(report.summary.latestPainLevel ?? 'Sem registro')],
+      ['Último registro de dor', report.summary.latestPainAt ? new Date(report.summary.latestPainAt).toLocaleString('pt-BR') : 'Sem registro'],
       ['Exercícios concluídos', String(report.summary.completedExercises)],
       ['Total de exercícios', String(report.summary.totalExercises)],
     ];
