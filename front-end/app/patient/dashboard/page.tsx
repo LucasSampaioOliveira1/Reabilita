@@ -30,7 +30,8 @@ type DashboardData = {
   summary: {
     adherenceRate: number;
     avgPain: number;
-    weeklyFrequency: number;
+    totalExercises: number;
+    completedExercises: number;
   };
   notifications: string[];
 };
@@ -290,8 +291,10 @@ export default function PatientDashboardPage() {
             <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.avgPain}</p>
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <p className="text-sm font-medium text-[#3A6C89]">Frequência Semanal</p>
-            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.weeklyFrequency}</p>
+            <p className="text-sm font-medium text-[#3A6C89]">Exercícios Concluídos</p>
+            <p className="text-3xl font-bold text-[#096196] mt-2">
+              {data.summary.completedExercises}/{data.summary.totalExercises}
+            </p>
           </div>
         </div>
 

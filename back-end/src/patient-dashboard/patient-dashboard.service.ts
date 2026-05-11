@@ -40,25 +40,26 @@ export class PatientDashboardService {
     return { start, end };
   }
 
-  private buildSummary(sessions: Array<{ completed: boolean; painLevel: number; date: Date }>) {
-    const total = sessions.length;
-    const completed = sessions.filter((s) => s.completed).length;
+  private buildSummary(
+    painRecords: Array<{ completed: boolean; painLevel: number; date: Date }>,
+    exercises: Array<{ completed: boolean }>,
+  ) {
+    const total = painRecords.length;
+    const completed = painRecords.filter((s) => s.completed).length;
     const adherenceRate = total ? Math.round((completed / total) * 100) : 0;
     const avgPain = total
       ? Number(
-          (sessions.reduce((acc, session) => acc + session.painLevel, 0) / total).toFixed(1),
+          (painRecords.reduce((acc, record) => acc + record.painLevel, 0) / total).toFixed(1),
         )
       : 0;
-
-    const monthAgo = new Date();
-    monthAgo.setDate(monthAgo.getDate() - 28);
-    const lastMonthSessions = sessions.filter((session) => session.date >= monthAgo);
-    const weeklyFrequency = Number((lastMonthSessions.length / 4).toFixed(1));
+    const totalExercises = exercises.length;
+    const completedExercises = exercises.filter((exercise) => exercise.completed).length;
 
     return {
       adherenceRate,
       avgPain,
-      weeklyFrequency,
+      totalExercises,
+      completedExercises,
     };
   }
 
@@ -82,7 +83,7 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
-    const [videos, exercises, sessions, interactions, latestChecks] = await Promise.all([
+    const [videos, exercises, painRecords, interactions, latestChecks] = await Promise.all([
       this.prisma.patientVideo.findMany({
         where: { patientId },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
@@ -91,7 +92,7 @@ export class PatientDashboardService {
         where: { patientId, isActive: true },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
       }),
-      this.prisma.session.findMany({
+      this.prisma.painRecord.findMany({
         where: { patientId },
         orderBy: { date: 'desc' },
         take: 60,
@@ -137,18 +138,18 @@ export class PatientDashboardService {
       };
     });
 
-    const hasTodaySession = sessions.some(
-      (session) => session.date >= start && session.date <= end,
+    const hasTodayPainRecord = painRecords.some(
+      (record) => record.date >= start && record.date <= end,
     );
 
     return {
       patient,
       videos,
       exercises: exercisesWithChecks,
-      sessions,
+      sessions: painRecords,
       interactions,
-      summary: this.buildSummary(sessions),
-      notifications: hasTodaySession ? [] : ['Lembrete: registre seu nível de dor (EVA).'],
+      summary: this.buildSummary(painRecords, exercisesWithChecks),
+      notifications: hasTodayPainRecord ? [] : ['Lembrete: registre seu nível de dor (EVA).'],
     };
   }
 
@@ -187,7 +188,7 @@ export class PatientDashboardService {
       activeExercises.length > 0 &&
       activeExercises.every((exercise) => latestByExercise.get(exercise.id) === true);
 
-    const existing = await this.prisma.session.findFirst({
+    const existing = await this.prisma.painRecord.findFirst({
       where: {
         patientId: patient.id,
         date: {
@@ -197,15 +198,15 @@ export class PatientDashboardService {
       },
     });
 
-    const session = existing
-      ? await this.prisma.session.update({
+    const painRecord = existing
+      ? await this.prisma.painRecord.update({
           where: { id: existing.id },
           data: {
             completed: completedAllExercises,
             painLevel: dto.painLevel,
           },
         })
-      : await this.prisma.session.create({
+      : await this.prisma.painRecord.create({
           data: {
             patientId: patient.id,
             completed: completedAllExercises,
@@ -214,7 +215,7 @@ export class PatientDashboardService {
           },
         });
 
-    return session;
+    return painRecord;
   }
 
   async savePatientExerciseCheck(
@@ -381,7 +382,8 @@ export class PatientDashboardService {
       ['Status', report.patient.status],
       ['Taxa de adesão (%)', String(report.summary.adherenceRate)],
       ['Dor média (EVA)', String(report.summary.avgPain)],
-      ['Frequência semanal', String(report.summary.weeklyFrequency)],
+      ['Exercícios concluídos', String(report.summary.completedExercises)],
+      ['Total de exercícios', String(report.summary.totalExercises)],
     ];
 
     const csv = rows.map((row) => row.map((item) => `"${item.replace(/"/g, '""')}"`).join(',')).join('\n');

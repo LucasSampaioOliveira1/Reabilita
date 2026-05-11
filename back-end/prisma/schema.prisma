@@ -41,7 +41,7 @@ model Patient {
   condition    String
   phase        Int                  @default(1)
   status       PatientStatus        @default(IN_PROGRESS)
-  sessions     Session[]
+  painRecords  PainRecord[]
   videos       PatientVideo[]
   exercises    PatientExercise[]
   exerciseChecks PatientExerciseCheck[]
@@ -67,7 +67,7 @@ model Exercise {
   @@index([phase])
 }
 
-model Session {
+model PainRecord {
   id         String   @id @default(cuid())
   patientId  String
   completed  Boolean
@@ -79,6 +79,7 @@ model Session {
 
   @@index([patientId])
   @@index([date])
+  @@map("Session")
 }
 
 model PatientVideo {

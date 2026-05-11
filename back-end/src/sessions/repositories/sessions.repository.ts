@@ -11,7 +11,7 @@ export class SessionsRepository {
     painLevel: number;
     date: Date;
   }) {
-    return this.prisma.session.create({
+    return this.prisma.painRecord.create({
       data,
       include: {
         patient: true,
@@ -20,7 +20,7 @@ export class SessionsRepository {
   }
 
   findAll(patientId?: string) {
-    return this.prisma.session.findMany({
+    return this.prisma.painRecord.findMany({
       where: patientId ? { patientId } : undefined,
       include: {
         patient: true,
@@ -32,7 +32,7 @@ export class SessionsRepository {
   }
 
   findById(id: string) {
-    return this.prisma.session.findUnique({
+    return this.prisma.painRecord.findUnique({
       where: { id },
       include: {
         patient: true,
