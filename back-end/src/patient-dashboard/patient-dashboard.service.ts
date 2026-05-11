@@ -56,8 +56,6 @@ export class PatientDashboardService {
     const weeklyFrequency = Number((lastMonthSessions.length / 4).toFixed(1));
 
     return {
-      totalSessions: total,
-      completedSessions: completed,
       adherenceRate,
       avgPain,
       weeklyFrequency,
@@ -384,8 +382,6 @@ export class PatientDashboardService {
       ['Taxa de adesão (%)', String(report.summary.adherenceRate)],
       ['Dor média (EVA)', String(report.summary.avgPain)],
       ['Frequência semanal', String(report.summary.weeklyFrequency)],
-      ['Total de sessões', String(report.summary.totalSessions)],
-      ['Sessões concluídas', String(report.summary.completedSessions)],
     ];
 
     const csv = rows.map((row) => row.map((item) => `"${item.replace(/"/g, '""')}"`).join(',')).join('\n');

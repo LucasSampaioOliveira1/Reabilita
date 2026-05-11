@@ -31,8 +31,6 @@ type DashboardData = {
     adherenceRate: number;
     avgPain: number;
     weeklyFrequency: number;
-    totalSessions: number;
-    completedSessions: number;
   };
   notifications: string[];
 };
@@ -282,7 +280,7 @@ export default function PatientDashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <p className="text-sm font-medium text-[#3A6C89]">Adesão</p>
             <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.adherenceRate}%</p>
@@ -294,12 +292,6 @@ export default function PatientDashboardPage() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <p className="text-sm font-medium text-[#3A6C89]">Frequência Semanal</p>
             <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.weeklyFrequency}</p>
-          </div>
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <p className="text-sm font-medium text-[#3A6C89]">Sessões</p>
-            <p className="text-3xl font-bold text-[#096196] mt-2">
-              {data.summary.completedSessions}/{data.summary.totalSessions}
-            </p>
           </div>
         </div>
 
