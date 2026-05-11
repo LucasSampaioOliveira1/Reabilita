@@ -41,6 +41,23 @@ export class PatientDashboardService {
     return { start, end };
   }
 
+  private listPatientInteractions(patientId: string, take = 100) {
+    return this.prisma.patientInteraction.findMany({
+      where: { patientId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take,
+    });
+  }
+
   private buildSummary(
     painRecords: Array<{ completed: boolean; painLevel: number; date: Date }>,
     exercises: Array<{ completed: boolean }>,
@@ -91,20 +108,7 @@ export class PatientDashboardService {
         orderBy: { date: 'desc' },
         take: 60,
       }),
-      this.prisma.patientInteraction.findMany({
-        where: { patientId },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      }),
+      this.listPatientInteractions(patientId, 50),
       this.prisma.patientExerciseCheck.findMany({
         where: { patientId },
         orderBy: { date: 'desc' },
@@ -131,8 +135,6 @@ export class PatientDashboardService {
         lastCheckCompleted: latest?.completed ?? null,
       };
     });
-    const interactions = [...latestInteractions].reverse();
-
     const hasTodayPainRecord = painRecords.some(
       (record) => record.date >= start && record.date <= end,
     );
@@ -142,7 +144,7 @@ export class PatientDashboardService {
       videos,
       exercises: exercisesWithChecks,
       sessions: painRecords,
-      interactions,
+      interactions: latestInteractions,
       summary: this.buildSummary(painRecords, exercisesWithChecks),
       hasTodayPainRecord,
       notifications: hasTodayPainRecord
@@ -405,6 +407,18 @@ export class PatientDashboardService {
       .map(({ sortDate: _sortDate, ...chat }) => chat);
   }
 
+  async getPatientChatByUser(user: JwtUser) {
+    this.ensurePatient(user);
+    const patient = await this.patientsRepository.findByUserId(user.sub);
+    if (!patient) {
+      throw new NotFoundException('Perfil de paciente não encontrado.');
+    }
+
+    return {
+      interactions: await this.listPatientInteractions(patient.id, 100),
+    };
+  }
+
   async getPhysioChatConversation(user: JwtUser, patientId: string) {
     this.ensurePhysio(user);
 
@@ -413,20 +427,7 @@ export class PatientDashboardService {
       throw new NotFoundException('Paciente nao encontrado.');
     }
 
-    const interactions = await this.prisma.patientInteraction.findMany({
-      where: { patientId },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-      take: 100,
-    });
+    const interactions = await this.listPatientInteractions(patientId, 100);
 
     return {
       patient: {

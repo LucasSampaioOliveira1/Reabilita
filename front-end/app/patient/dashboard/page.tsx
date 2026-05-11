@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+const CHAT_SYNC_INTERVAL_OPEN_MS = 2500;
+const CHAT_SYNC_INTERVAL_IDLE_MS = 5000;
+
 type DashboardData = {
   patient: {
     id: string;
@@ -94,6 +97,7 @@ export default function PatientDashboardPage() {
   const loadDashboard = useCallback(async () => {
     if (!auth) return;
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me`, {
+      cache: 'no-store',
       headers: {
         Authorization: `Bearer ${auth.token}`,
       },
@@ -102,6 +106,45 @@ export default function PatientDashboardPage() {
     if (!response.ok) throw new Error(result.message || 'Erro ao carregar seu perfil.');
     setData(result);
   }, [auth]);
+
+  const loadChatInteractions = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!auth) return;
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me/chat`,
+          {
+            cache: 'no-store',
+            headers: {
+              Authorization: `Bearer ${auth.token}`,
+            },
+          },
+        );
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Erro ao sincronizar mensagens.');
+        }
+
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                interactions: result.interactions,
+              }
+            : prev,
+        );
+      } catch (err) {
+        if (!silent) {
+          setError(
+            err instanceof Error ? err.message : 'Erro ao sincronizar mensagens.',
+          );
+        }
+      }
+    },
+    [auth],
+  );
 
   useEffect(() => {
     if (!auth) {
@@ -126,6 +169,19 @@ export default function PatientDashboardPage() {
     if (!isChatOpen || !chatMessagesRef.current) return;
     chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
   }, [isChatOpen, data?.interactions.length]);
+
+  useEffect(() => {
+    if (!auth) return;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      void loadChatInteractions({ silent: true });
+    }, isChatOpen ? CHAT_SYNC_INTERVAL_OPEN_MS : CHAT_SYNC_INTERVAL_IDLE_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [auth, isChatOpen, loadChatInteractions]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -211,7 +267,19 @@ export default function PatientDashboardPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Erro ao enviar mensagem.');
       setChatMessage('');
-      await loadDashboard();
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              interactions: prev.interactions.some(
+                (interaction) => interaction.id === result.id,
+              )
+                ? prev.interactions
+                : [...prev.interactions, result],
+            }
+          : prev,
+      );
+      await loadChatInteractions({ silent: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao enviar mensagem.');
     } finally {

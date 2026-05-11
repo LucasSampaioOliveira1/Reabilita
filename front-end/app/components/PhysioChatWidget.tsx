@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const CHAT_LIST_SYNC_INTERVAL_MS = 5000;
+const ACTIVE_CHAT_SYNC_INTERVAL_MS = 2500;
+
 type ChatListItem = {
   patientId: string;
   patientName: string;
@@ -109,16 +112,19 @@ export default function PhysioChatWidget({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const loadChatList = useCallback(async () => {
+  const loadChatList = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!auth) return;
 
-    setIsLoadingChatList(true);
-    setError('');
+    if (!silent) {
+      setIsLoadingChatList(true);
+      setError('');
+    }
 
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/physio/chats`,
         {
+          cache: 'no-store',
           headers: {
             Authorization: `Bearer ${auth.token}`,
           },
@@ -132,25 +138,32 @@ export default function PhysioChatWidget({
 
       setChatList(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Erro ao carregar conversas.',
-      );
+      if (!silent) {
+        setError(
+          err instanceof Error ? err.message : 'Erro ao carregar conversas.',
+        );
+      }
     } finally {
-      setIsLoadingChatList(false);
+      if (!silent) {
+        setIsLoadingChatList(false);
+      }
     }
   }, [auth]);
 
   const loadConversation = useCallback(
-    async (patientId: string) => {
+    async (patientId: string, { silent = false }: { silent?: boolean } = {}) => {
       if (!auth) return;
 
-      setIsLoadingConversation(true);
-      setError('');
+      if (!silent) {
+        setIsLoadingConversation(true);
+        setError('');
+      }
 
       try {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/physio/chats/${patientId}`,
           {
+            cache: 'no-store',
             headers: {
               Authorization: `Bearer ${auth.token}`,
             },
@@ -164,11 +177,15 @@ export default function PhysioChatWidget({
 
         setConversation(result);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Erro ao carregar conversa.',
-        );
+        if (!silent) {
+          setError(
+            err instanceof Error ? err.message : 'Erro ao carregar conversa.',
+          );
+        }
       } finally {
-        setIsLoadingConversation(false);
+        if (!silent) {
+          setIsLoadingConversation(false);
+        }
       }
     },
     [auth],
@@ -238,6 +255,32 @@ export default function PhysioChatWidget({
       messagesContainerRef.current.scrollHeight;
   }, [isOpen, conversation?.interactions.length]);
 
+  useEffect(() => {
+    if (!auth || !isOpen) return;
+
+    const chatListIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      void loadChatList({ silent: true });
+    }, CHAT_LIST_SYNC_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(chatListIntervalId);
+    };
+  }, [auth, isOpen, loadChatList]);
+
+  useEffect(() => {
+    if (!auth || !isOpen || !effectiveSelectedPatientId) return;
+
+    const conversationIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      void loadConversation(effectiveSelectedPatientId, { silent: true });
+    }, ACTIVE_CHAT_SYNC_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(conversationIntervalId);
+    };
+  }, [auth, isOpen, effectiveSelectedPatientId, loadConversation]);
+
   const filteredChats = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
 
@@ -302,7 +345,10 @@ export default function PhysioChatWidget({
         };
       });
 
-      await loadChatList();
+      await Promise.all([
+        loadChatList({ silent: true }),
+        loadConversation(effectiveSelectedPatientId, { silent: true }),
+      ]);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Erro ao enviar mensagem.',

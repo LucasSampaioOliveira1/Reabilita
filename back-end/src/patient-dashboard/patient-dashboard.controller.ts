@@ -35,6 +35,11 @@ export class PatientDashboardController {
     return this.patientDashboardService.getPatientDashboardByUser(req.user.sub);
   }
 
+  @Get('me/chat')
+  getMyChat(@Req() req: JwtRequest) {
+    return this.patientDashboardService.getPatientChatByUser(req.user);
+  }
+
   @Post('me/session')
   saveMyDailySession(
     @Req() req: JwtRequest,
