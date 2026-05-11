@@ -135,6 +135,7 @@ export class PatientDashboardService {
 
     const hasTodayPainRecord = painRecords.some(
       (record) => record.date >= start && record.date <= end,
+    );
 
     return {
       patient,
