@@ -86,6 +86,7 @@ export default function PatientDashboardPage() {
   const [isSavingSession, setIsSavingSession] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [checkingExerciseId, setCheckingExerciseId] = useState<string | null>(null);
+  const [isPainConfirmOpen, setIsPainConfirmOpen] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     if (!auth) return;
@@ -124,8 +125,7 @@ export default function PatientDashboardPage() {
     router.push('/patient');
   };
 
-  const handleSessionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitPainRecord = async () => {
     if (!auth) return;
     setIsSavingSession(true);
     setError('');
@@ -143,11 +143,19 @@ export default function PatientDashboardPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Erro ao salvar registro de dor.');
       await loadDashboard();
+      setIsPainConfirmOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar registro de dor.');
     } finally {
       setIsSavingSession(false);
     }
+  };
+
+  const handleSessionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSavingSession) return;
+    setError('');
+    setIsPainConfirmOpen(true);
   };
 
   const handleExerciseCheck = async (exerciseId: string, completed: boolean) => {
@@ -463,6 +471,38 @@ export default function PatientDashboardPage() {
           )}
         </div>
       </div>
+
+      {isPainConfirmOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B2A3D]/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#CBE9FB] bg-white p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-[#096196]">Confirmar registro de dor</h3>
+            <p className="mt-3 text-sm text-[#3A6C89]">
+              Deseja salvar o valor atual de dor como <span className="font-bold text-[#096196]">{painLevel}/10</span>?
+            </p>
+            <p className="mt-2 text-xs text-[#3A6C89]">
+              Esse registro sera salvo no seu historico de dor (EVA).
+            </p>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsPainConfirmOpen(false)}
+                disabled={isSavingSession}
+                className="rounded-lg border border-[#CBE9FB] bg-white px-4 py-2 font-semibold text-[#096196] hover:bg-[#F3FAFF] disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={submitPainRecord}
+                disabled={isSavingSession}
+                className="rounded-lg bg-[#096196] px-4 py-2 font-semibold text-white hover:bg-[#0B78B7] disabled:opacity-60"
+              >
+                {isSavingSession ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
