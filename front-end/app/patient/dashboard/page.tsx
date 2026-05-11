@@ -61,6 +61,10 @@ function hasStoredPatientReadCount(patientId: string) {
   return localStorage.getItem(getPatientChatReadStorageKey(patientId)) !== null;
 }
 
+function countIncomingPhysioMessages(interactions: DashboardData['interactions']) {
+  return interactions.filter((interaction) => interaction.author.role === 'physio').length;
+}
+
 function getPatientAuth() {
   if (typeof window === 'undefined') return null;
 
@@ -138,9 +142,10 @@ export default function PatientDashboardPage() {
     if (!response.ok) throw new Error(result.message || 'Erro ao carregar seu perfil.');
     if (activePatientIdRef.current !== result.patient.id) {
       activePatientIdRef.current = result.patient.id;
+      const currentPhysioMessages = countIncomingPhysioMessages(result.interactions);
       const storedReadCount = hasStoredPatientReadCount(result.patient.id)
         ? getStoredPatientReadCount(result.patient.id)
-        : result.physioMessageCount;
+        : currentPhysioMessages;
       setReadPhysioMessageCount(storedReadCount);
 
       if (!hasStoredPatientReadCount(result.patient.id) && typeof window !== 'undefined') {
@@ -184,7 +189,10 @@ export default function PatientDashboardPage() {
         );
 
         if (activePatientIdRef.current && isChatOpenRef.current) {
-          markPhysioMessagesAsRead(activePatientIdRef.current, result.physioMessageCount);
+          markPhysioMessagesAsRead(
+            activePatientIdRef.current,
+            countIncomingPhysioMessages(result.interactions),
+          );
         }
       } catch (err) {
         if (!silent) {
@@ -370,9 +378,10 @@ export default function PatientDashboardPage() {
   }
 
   const hasTodayPainRecord = data.hasTodayPainRecord;
+  const currentPhysioMessages = countIncomingPhysioMessages(data.interactions);
   const unreadPhysioMessages = Math.max(
     0,
-    data.physioMessageCount - readPhysioMessageCount,
+    currentPhysioMessages - readPhysioMessageCount,
   );
 
   const handleToggleChat = () => {
@@ -380,7 +389,7 @@ export default function PatientDashboardPage() {
       const next = !prev;
 
       if (next) {
-        markPhysioMessagesAsRead(data.patient.id, data.physioMessageCount);
+        markPhysioMessagesAsRead(data.patient.id, currentPhysioMessages);
       }
 
       return next;
