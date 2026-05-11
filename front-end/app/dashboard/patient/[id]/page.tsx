@@ -31,7 +31,6 @@ type PatientDashboardResponse = {
     author: { name: string; role: string };
   }>;
   summary: {
-    adherenceRate: number;
     avgPain: number;
     totalExercises: number;
     completedExercises: number;
@@ -351,11 +350,7 @@ export default function PatientProfilePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
-            <p className="text-sm text-[#3A6C89]">Adesão</p>
-            <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.adherenceRate}%</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl p-5 border border-[#CBE9FB] shadow-sm">
             <p className="text-sm text-[#3A6C89]">Dor Média (EVA)</p>
             <p className="text-2xl font-bold text-[#096196] mt-1">{data.summary.avgPain}</p>

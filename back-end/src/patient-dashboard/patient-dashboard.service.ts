@@ -45,8 +45,6 @@ export class PatientDashboardService {
     exercises: Array<{ completed: boolean }>,
   ) {
     const total = painRecords.length;
-    const completed = painRecords.filter((s) => s.completed).length;
-    const adherenceRate = total ? Math.round((completed / total) * 100) : 0;
     const avgPain = total
       ? Number(
           (painRecords.reduce((acc, record) => acc + record.painLevel, 0) / total).toFixed(1),
@@ -56,7 +54,6 @@ export class PatientDashboardService {
     const completedExercises = exercises.filter((exercise) => exercise.completed).length;
 
     return {
-      adherenceRate,
       avgPain,
       totalExercises,
       completedExercises,
@@ -380,7 +377,6 @@ export class PatientDashboardService {
       ['Condição', report.patient.condition],
       ['Fase', String(report.patient.phase)],
       ['Status', report.patient.status],
-      ['Taxa de adesão (%)', String(report.summary.adherenceRate)],
       ['Dor média (EVA)', String(report.summary.avgPain)],
       ['Exercícios concluídos', String(report.summary.completedExercises)],
       ['Total de exercícios', String(report.summary.totalExercises)],

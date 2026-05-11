@@ -28,7 +28,6 @@ type DashboardData = {
     author: { name: string; role: string };
   }>;
   summary: {
-    adherenceRate: number;
     avgPain: number;
     totalExercises: number;
     completedExercises: number;
@@ -281,11 +280,7 @@ export default function PatientDashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <p className="text-sm font-medium text-[#3A6C89]">Adesão</p>
-            <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.adherenceRate}%</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <p className="text-sm font-medium text-[#3A6C89]">Dor Média (EVA)</p>
             <p className="text-3xl font-bold text-[#096196] mt-2">{data.summary.avgPain}</p>
