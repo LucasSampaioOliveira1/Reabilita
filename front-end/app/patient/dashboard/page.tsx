@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type DashboardData = {
   patient: {
@@ -88,6 +88,8 @@ export default function PatientDashboardPage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [checkingExerciseId, setCheckingExerciseId] = useState<string | null>(null);
   const [isPainConfirmOpen, setIsPainConfirmOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const chatMessagesRef = useRef<HTMLDivElement | null>(null);
 
   const loadDashboard = useCallback(async () => {
     if (!auth) return;
@@ -119,6 +121,11 @@ export default function PatientDashboardPage() {
     };
     loadData();
   }, [auth, router, loadDashboard]);
+
+  useEffect(() => {
+    if (!isChatOpen || !chatMessagesRef.current) return;
+    chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+  }, [isChatOpen, data?.interactions.length]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -312,7 +319,7 @@ export default function PatientDashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <h2 className="text-xl font-bold text-[#096196] mb-4">Registro Diário de Dor (EVA)</h2>
             <form onSubmit={handleSessionSubmit} className="space-y-4">
@@ -344,54 +351,6 @@ export default function PatientDashboardPage() {
                   : isSavingSession
                     ? 'Salvando...'
                     : 'Salvar Dor do Dia'}
-              </button>
-            </form>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#E5F5FF] text-[#096196]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-[#096196]">Chat com Fisioterapeuta</h2>
-            </div>
-            {data.interactions.length === 0 ? (
-              <p className="text-[#3A6C89]">Nenhuma mensagem ainda. Envie uma atualização para seu fisioterapeuta.</p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-auto mb-4">
-                {data.interactions.map((interaction) => (
-                  <div
-                    key={interaction.id}
-                    className={`rounded-lg p-3 border ${
-                      interaction.author.role === 'patient'
-                        ? 'bg-[#E5F5FF] border-[#CBE9FB]'
-                        : 'bg-[#F8FCFF] border-[#D6EEFC]'
-                    }`}
-                  >
-                    <p className="text-[#096196]">{interaction.note}</p>
-                    <p className="text-xs text-[#3A6C89] mt-1">
-                      {interaction.author.name} ({interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) •{' '}
-                      {new Date(interaction.createdAt).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-            <form onSubmit={handleSendMessage} className="flex gap-2">
-              <input
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                className="flex-1 border border-[#CBE9FB] rounded-lg px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
-                placeholder="Digite sua mensagem para o fisioterapeuta"
-              />
-              <button
-                type="submit"
-                disabled={isSendingMessage || !chatMessage.trim()}
-                className="bg-[#096196] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#0B78B7] transition-all disabled:opacity-60"
-              >
-                {isSendingMessage ? 'Enviando...' : 'Enviar'}
               </button>
             </form>
           </div>
@@ -516,6 +475,102 @@ export default function PatientDashboardPage() {
           </div>
         </div>
       ) : null}
+
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+        {isChatOpen ? (
+          <div className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border border-[#CBE9FB] bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between gap-3 bg-[#096196] px-4 py-3 text-white">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold leading-none">Chat com Fisioterapeuta</p>
+                  <p className="text-xs text-white/80 mt-1">Historico salvo automaticamente</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(false)}
+                className="rounded-lg px-2 py-1 text-sm font-semibold hover:bg-white/10"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div
+              ref={chatMessagesRef}
+              className="max-h-104 min-h-72 overflow-y-auto bg-[#F8FCFF] px-4 py-4 space-y-3"
+            >
+              {data.interactions.length === 0 ? (
+                <div className="rounded-xl border border-[#D6EEFC] bg-white p-4 text-sm text-[#3A6C89]">
+                  Nenhuma mensagem ainda. Envie uma atualização para seu fisioterapeuta.
+                </div>
+              ) : (
+                data.interactions.map((interaction) => {
+                  const isPatientMessage = interaction.author.role === 'patient';
+
+                  return (
+                    <div
+                      key={interaction.id}
+                      className={`flex ${isPatientMessage ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm border ${
+                          isPatientMessage
+                            ? 'bg-[#E5F5FF] border-[#CBE9FB] text-[#096196]'
+                            : 'bg-white border-[#D6EEFC] text-[#096196]'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap wrap-break-word">{interaction.note}</p>
+                        <p className="mt-2 text-[11px] text-[#3A6C89]">
+                          {interaction.author.name} ({interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'}) •{' '}
+                          {new Date(interaction.createdAt).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="border-t border-[#CBE9FB] bg-white p-3">
+              <div className="flex items-end gap-2">
+                <input
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  className="flex-1 border border-[#CBE9FB] rounded-xl px-3 py-3 text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#096196]"
+                  placeholder="Digite sua mensagem para o fisioterapeuta"
+                />
+                <button
+                  type="submit"
+                  disabled={isSendingMessage || !chatMessage.trim()}
+                  className="shrink-0 rounded-xl bg-[#096196] px-4 py-3 font-semibold text-white hover:bg-[#0B78B7] transition-all disabled:opacity-60"
+                >
+                  {isSendingMessage ? 'Enviando...' : 'Enviar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setIsChatOpen((prev) => !prev)}
+          className="inline-flex items-center gap-3 rounded-full bg-[#096196] px-5 py-4 text-white shadow-2xl hover:bg-[#0B78B7] transition-all"
+        >
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </span>
+          <span className="font-semibold">
+            {isChatOpen ? 'Ocultar Chat' : 'Abrir Chat'}
+          </span>
+        </button>
+      </div>
     </main>
   );
 }

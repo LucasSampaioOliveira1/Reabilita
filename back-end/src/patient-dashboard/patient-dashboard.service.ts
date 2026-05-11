@@ -77,7 +77,7 @@ export class PatientDashboardService {
     }
 
     const { start, end } = this.getTodayRange();
-    const [videos, exercises, painRecords, interactions, latestChecks] = await Promise.all([
+    const [videos, exercises, painRecords, latestInteractions, latestChecks] = await Promise.all([
       this.prisma.patientVideo.findMany({
         where: { patientId },
         orderBy: [{ phase: 'asc' }, { createdAt: 'desc' }],
@@ -131,10 +131,10 @@ export class PatientDashboardService {
         lastCheckCompleted: latest?.completed ?? null,
       };
     });
+    const interactions = [...latestInteractions].reverse();
 
     const hasTodayPainRecord = painRecords.some(
       (record) => record.date >= start && record.date <= end,
-    );
 
     return {
       patient,
