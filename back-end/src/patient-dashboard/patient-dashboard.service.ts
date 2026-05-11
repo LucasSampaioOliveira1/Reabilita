@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -142,7 +143,10 @@ export class PatientDashboardService {
       sessions: painRecords,
       interactions,
       summary: this.buildSummary(painRecords, exercisesWithChecks),
-      notifications: hasTodayPainRecord ? [] : ['Lembrete: registre seu nível de dor (EVA).'],
+      hasTodayPainRecord,
+      notifications: hasTodayPainRecord
+        ? ['Seu registro diario de dor (EVA) de hoje ja foi realizado.']
+        : ['Lembrete: registre seu nivel de dor (EVA).'],
     };
   }
 
@@ -191,22 +195,20 @@ export class PatientDashboardService {
       },
     });
 
-    const painRecord = existing
-      ? await this.prisma.painRecord.update({
-          where: { id: existing.id },
-          data: {
-            completed: completedAllExercises,
-            painLevel: dto.painLevel,
-          },
-        })
-      : await this.prisma.painRecord.create({
-          data: {
-            patientId: patient.id,
-            completed: completedAllExercises,
-            painLevel: dto.painLevel,
-            date: new Date(),
-          },
-        });
+    if (existing) {
+      throw new BadRequestException(
+        'Voce ja realizou o registro diario de dor (EVA) de hoje.',
+      );
+    }
+
+    const painRecord = await this.prisma.painRecord.create({
+      data: {
+        patientId: patient.id,
+        completed: completedAllExercises,
+        painLevel: dto.painLevel,
+        date: new Date(),
+      },
+    });
 
     return painRecord;
   }

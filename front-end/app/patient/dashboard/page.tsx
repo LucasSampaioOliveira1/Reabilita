@@ -33,6 +33,7 @@ type DashboardData = {
     totalExercises: number;
     completedExercises: number;
   };
+  hasTodayPainRecord: boolean;
   notifications: string[];
 };
 
@@ -153,7 +154,7 @@ export default function PatientDashboardPage() {
 
   const handleSessionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSavingSession) return;
+    if (isSavingSession || hasTodayPainRecord) return;
     setError('');
     setIsPainConfirmOpen(true);
   };
@@ -238,6 +239,8 @@ export default function PatientDashboardPage() {
     );
   }
 
+  const hasTodayPainRecord = data.hasTodayPainRecord;
+
   return (
     <main className="min-h-screen bg-[#E5F5FF]">
       <header className="bg-white shadow-sm border-b border-[#CBE9FB]">
@@ -321,16 +324,26 @@ export default function PatientDashboardPage() {
                   max={10}
                   value={painLevel}
                   onChange={(e) => setPainLevel(Number(e.target.value))}
-                  className="w-full"
+                  disabled={hasTodayPainRecord}
+                  className="w-full disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <p className="text-[#096196] font-bold mt-1">{painLevel}/10</p>
               </div>
+              {hasTodayPainRecord ? (
+                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
+                  Seu registro diario de dor (EVA) de hoje ja foi realizado. Voce podera registrar novamente amanha.
+                </div>
+              ) : null}
               <button
                 type="submit"
-                disabled={isSavingSession}
-                className="bg-[#096196] text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-60"
+                disabled={isSavingSession || hasTodayPainRecord}
+                className="bg-[#096196] text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-[#0B78B7] hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSavingSession ? 'Salvando...' : 'Salvar Dor do Dia'}
+                {hasTodayPainRecord
+                  ? 'Registro de Hoje Realizado'
+                  : isSavingSession
+                    ? 'Salvando...'
+                    : 'Salvar Dor do Dia'}
               </button>
             </form>
           </div>
