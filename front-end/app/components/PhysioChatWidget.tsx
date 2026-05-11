@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const CHAT_LIST_SYNC_INTERVAL_MS = 5000;
+const CHAT_LIST_SYNC_INTERVAL_OPEN_MS = 3500;
+const CHAT_LIST_SYNC_INTERVAL_CLOSED_MS = 2500;
 const ACTIVE_CHAT_SYNC_INTERVAL_MS = 2500;
 
 type ChatListItem = {
@@ -318,12 +319,12 @@ export default function PhysioChatWidget({
   }, [isOpen, conversation?.interactions.length]);
 
   useEffect(() => {
-    if (!auth || !isOpen) return;
+    if (!auth) return;
 
     const chatListIntervalId = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return;
       void loadChatList({ silent: true });
-    }, CHAT_LIST_SYNC_INTERVAL_MS);
+    }, isOpen ? CHAT_LIST_SYNC_INTERVAL_OPEN_MS : CHAT_LIST_SYNC_INTERVAL_CLOSED_MS);
 
     return () => {
       window.clearInterval(chatListIntervalId);
