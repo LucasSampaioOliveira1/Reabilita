@@ -129,7 +129,8 @@ type PatientStatusFilter = 'ALL' | 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user] = useState<{ name: string; role: string } | null>(getUserFromStorage);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -172,7 +173,19 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<PhysioNotificationsData | null>(null);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
-  const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>(getStoredPhysioChatReadCounts);
+  const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setUser(getUserFromStorage());
+      setChatReadCounts(getStoredPhysioChatReadCounts());
+      setIsHydrated(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const fetchPatients = async () => {
     try {
@@ -228,6 +241,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!user) {
       router.push('/');
       return;
@@ -254,10 +269,10 @@ export default function DashboardPage() {
     };
 
     loadPatients();
-  }, [user, router]);
+  }, [isHydrated, user, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!isHydrated || !user) return;
 
     const timeoutId = window.setTimeout(() => {
       void fetchNotifications();
@@ -272,7 +287,7 @@ export default function DashboardPage() {
       window.clearTimeout(timeoutId);
       window.clearInterval(intervalId);
     };
-  }, [user, fetchNotifications]);
+  }, [isHydrated, user, fetchNotifications]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -591,7 +606,7 @@ export default function DashboardPage() {
     return patient.cpf.replace(/\D/g, '').includes(normalizedCpfFilter);
   });
 
-  if (!user) {
+  if (!isHydrated || !user) {
     return null;
   }
 
