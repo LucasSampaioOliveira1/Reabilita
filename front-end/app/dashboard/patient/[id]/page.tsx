@@ -8,10 +8,15 @@ import PhysioChatWidget from "../../../components/PhysioChatWidget";
 type PatientDashboardResponse = {
   patient: {
     id: string;
+    cpf: string;
+    phone: string;
+    address: string;
+    birthDate: string;
+    age: number;
     phase: number;
     status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
     condition: string;
-    user: { name: string };
+    user: { name: string; loginCode: string };
   };
   videos: Array<{ id: string; title: string; videoUrl: string; phase: number }>;
   exercises: Array<{
@@ -61,6 +66,7 @@ export default function PatientProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const [videoForm, setVideoForm] = useState({ title: '', videoUrl: '', phase: 1 });
   const [exerciseForm, setExerciseForm] = useState({ title: '', description: '', phase: 1 });
@@ -300,6 +306,11 @@ export default function PatientProfilePage() {
     },
   } as const;
 
+  const formatPatientInfo = (value: string | null | undefined) => {
+    const normalized = value?.trim();
+    return normalized ? normalized : 'Nao informado';
+  };
+
   return (
     <main className="min-h-screen bg-[#E5F5FF]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -320,6 +331,13 @@ export default function PatientProfilePage() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsDetailsOpen(true)}
+              className="px-4 py-2 rounded-lg border border-[#CBE9FB] bg-white text-[#096196] font-semibold hover:bg-[#E5F5FF] hover:shadow-sm transition-all"
+            >
+              Detalhes do Paciente
+            </button>
             <button
               onClick={downloadReport}
               disabled={saving}
@@ -457,6 +475,97 @@ export default function PatientProfilePage() {
           )}
         </div>
       </div>
+
+      {isDetailsOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-3xl rounded-2xl border border-[#CBE9FB] bg-white p-6 shadow-2xl">
+            <div className="flex flex-col gap-4 border-b border-[#E5F2FB] pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#096196]">Detalhes do Paciente</h2>
+                <p className="mt-1 text-sm text-[#3A6C89]">
+                  Informacoes completas do cadastro do paciente.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDetailsOpen(false)}
+                className="rounded-lg bg-[#096196] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#0B78B7]"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Nome</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.user.name)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Login</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.user.loginCode)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">CPF</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.cpf)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Telefone</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.phone)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Data de Nascimento</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {data.patient.birthDate
+                    ? new Date(data.patient.birthDate).toLocaleDateString('pt-BR')
+                    : 'Nao informado'}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Idade</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {Number.isFinite(data.patient.age) ? `${data.patient.age} anos` : 'Nao informado'}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Condicao</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.condition)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Status</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {patientStatusMeta[data.patient.status].label}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3A6C89]">Endereco</p>
+                <p className="mt-2 text-base font-bold text-[#096196]">
+                  {formatPatientInfo(data.patient.address)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <PhysioChatWidget initialPatientId={patientId} />
     </main>
   );
