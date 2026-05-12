@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const CHAT_SYNC_INTERVAL_OPEN_MS = 2500;
 const CHAT_SYNC_INTERVAL_IDLE_MS = 5000;
 const PATIENT_CHAT_READ_STORAGE_PREFIX = 'patient-chat:read-physio-count:';
+const PATIENT_ACTIVITY_READ_STORAGE_PREFIX = 'patient-notifications:read-activities:';
 
 type DashboardData = {
   patient: {
@@ -66,6 +67,10 @@ function getPatientChatReadStorageKey(patientId: string) {
   return `${PATIENT_CHAT_READ_STORAGE_PREFIX}${patientId}`;
 }
 
+function getPatientActivityReadStorageKey(patientId: string) {
+  return `${PATIENT_ACTIVITY_READ_STORAGE_PREFIX}${patientId}`;
+}
+
 function getStoredPatientReadCount(patientId: string) {
   if (typeof window === 'undefined') return 0;
 
@@ -79,6 +84,21 @@ function getStoredPatientReadCount(patientId: string) {
 function hasStoredPatientReadCount(patientId: string) {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem(getPatientChatReadStorageKey(patientId)) !== null;
+}
+
+function getStoredPatientActivityReadAt(patientId: string) {
+  if (typeof window === 'undefined') return 0;
+
+  const rawValue = localStorage.getItem(getPatientActivityReadStorageKey(patientId));
+  if (!rawValue) return 0;
+
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasStoredPatientActivityReadAt(patientId: string) {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(getPatientActivityReadStorageKey(patientId)) !== null;
 }
 
 function countIncomingPhysioMessages(interactions: DashboardData['interactions']) {
@@ -166,6 +186,7 @@ export default function PatientDashboardPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [readPhysioMessageCount, setReadPhysioMessageCount] = useState(0);
+  const [readRecentActivityAt, setReadRecentActivityAt] = useState(0);
   const [notificationsData, setNotificationsData] = useState<PatientNotificationsData | null>(null);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
@@ -178,6 +199,14 @@ export default function PatientDashboardPage() {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(getPatientChatReadStorageKey(patientId), String(count));
+    }
+  }, []);
+
+  const markRecentActivitiesAsRead = useCallback((patientId: string, timestamp: number) => {
+    setReadRecentActivityAt(timestamp);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(getPatientActivityReadStorageKey(patientId), String(timestamp));
     }
   }, []);
 
@@ -205,6 +234,11 @@ export default function PatientDashboardPage() {
           String(storedReadCount),
         );
       }
+
+      const storedActivityReadAt = hasStoredPatientActivityReadAt(result.patient.id)
+        ? getStoredPatientActivityReadAt(result.patient.id)
+        : 0;
+      setReadRecentActivityAt(storedActivityReadAt);
     }
     setData(result);
   }, [auth]);
@@ -281,6 +315,17 @@ export default function PatientDashboardPage() {
           throw new Error(result.message || 'Erro ao carregar notificacoes.');
         }
 
+        const patientId = activePatientIdRef.current;
+        const latestActivityTimestamp = result.recentActivities.reduce(
+          (latest: number, activity: PatientNotificationsData['recentActivities'][number]) =>
+            Math.max(latest, new Date(activity.createdAt).getTime()),
+          0,
+        );
+
+        if (patientId && !hasStoredPatientActivityReadAt(patientId)) {
+          markRecentActivitiesAsRead(patientId, latestActivityTimestamp);
+        }
+
         setNotificationsData(result);
       } catch (err) {
         if (!silent) {
@@ -294,7 +339,7 @@ export default function PatientDashboardPage() {
         }
       }
     },
-    [auth],
+    [auth, markRecentActivitiesAsRead],
   );
 
   useEffect(() => {
@@ -350,6 +395,25 @@ export default function PatientDashboardPage() {
       window.clearInterval(intervalId);
     };
   }, [auth, isChatOpen, loadChatInteractions, loadNotifications]);
+
+  useEffect(() => {
+    if (!isNotificationsOpen || !data || !notificationsData) return;
+
+    const latestActivityTimestamp = notificationsData.recentActivities.reduce(
+      (latest, activity) => Math.max(latest, new Date(activity.createdAt).getTime()),
+      0,
+    );
+
+    if (latestActivityTimestamp > readRecentActivityAt) {
+      markRecentActivitiesAsRead(data.patient.id, latestActivityTimestamp);
+    }
+  }, [
+    data,
+    isNotificationsOpen,
+    markRecentActivitiesAsRead,
+    notificationsData,
+    readRecentActivityAt,
+  ]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -488,6 +552,12 @@ export default function PatientDashboardPage() {
     0,
     currentPhysioMessages - readPhysioMessageCount,
   );
+  const unreadRecentActivities = notificationsData
+    ? notificationsData.recentActivities.filter(
+        (activity) => new Date(activity.createdAt).getTime() > readRecentActivityAt,
+      ).length
+    : 0;
+  const totalUnreadNotifications = unreadPhysioMessages + unreadRecentActivities;
 
   const handleOpenNotificationsChat = () => {
     markPhysioMessagesAsRead(data.patient.id, currentPhysioMessages);
@@ -574,9 +644,9 @@ export default function PatientDashboardPage() {
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                {unreadPhysioMessages > 0 ? (
+                {totalUnreadNotifications > 0 ? (
                   <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {unreadPhysioMessages > 99 ? '99+' : unreadPhysioMessages}
+                    {totalUnreadNotifications > 99 ? '99+' : totalUnreadNotifications}
                   </span>
                 ) : null}
               </button>
@@ -939,11 +1009,16 @@ export default function PatientDashboardPage() {
                 </section>
 
                 <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
-                  <div className="border-b border-[#E5F2FB] pb-4">
-                    <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
-                    <p className="mt-1 text-sm text-[#3A6C89]">
-                      Novidades do seu acompanhamento e do seu plano.
-                    </p>
+                  <div className="flex items-center justify-between gap-3 border-b border-[#E5F2FB] pb-4">
+                    <div>
+                      <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
+                      <p className="mt-1 text-sm text-[#3A6C89]">
+                        Novidades do seu acompanhamento e do seu plano.
+                      </p>
+                    </div>
+                    <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#0B78B7] px-2 py-1 text-xs font-bold text-white">
+                      {unreadRecentActivities}
+                    </span>
                   </div>
 
                   <div className="mt-4 space-y-3">

@@ -244,12 +244,12 @@ export class PatientDashboardService {
       this.countPatientMessagesByAuthorRole(patient.id, 'physio'),
       this.prisma.patientVideo.findMany({
         where: { patientId: patient.id },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         take: 6,
       }),
       this.prisma.patientExercise.findMany({
         where: { patientId: patient.id, isActive: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         take: 6,
       }),
       this.prisma.painRecord.findFirst({
@@ -264,26 +264,19 @@ export class PatientDashboardService {
     ]);
 
     const recentActivities = [
-      ...physioMessages.map((message) => ({
-        id: `message-${message.id}`,
-        type: 'physio_message',
-        title: 'Nova mensagem do fisioterapeuta',
-        description: message.note,
-        createdAt: message.createdAt,
-      })),
       ...recentVideos.map((video) => ({
         id: `video-${video.id}`,
         type: 'video_added',
         title: 'Novo video disponivel',
         description: `${video.title} foi adicionado para a sua fase ${video.phase}.`,
-        createdAt: video.createdAt,
+        createdAt: video.updatedAt,
       })),
       ...recentExercises.map((exercise) => ({
         id: `exercise-${exercise.id}`,
         type: 'exercise_added',
         title: 'Novo exercicio disponivel',
         description: `${exercise.title} foi adicionado ao seu plano de exercicios.`,
-        createdAt: exercise.createdAt,
+        createdAt: exercise.updatedAt,
       })),
       {
         id: hasTodayPainRecord ? 'reminder-done' : 'reminder-pending',
@@ -294,7 +287,7 @@ export class PatientDashboardService {
         description: hasTodayPainRecord
           ? 'Seu registro diario de dor (EVA) de hoje ja foi realizado.'
           : 'Nao se esqueca de registrar seu nivel de dor (EVA) de hoje.',
-        createdAt: new Date(),
+        createdAt: hasTodayPainRecord?.date ?? start,
       },
     ]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
