@@ -405,7 +405,13 @@ export default function PatientDashboardPage() {
     );
 
     if (latestActivityTimestamp > readRecentActivityAt) {
-      markRecentActivitiesAsRead(data.patient.id, latestActivityTimestamp);
+      const timeoutId = window.setTimeout(() => {
+        markRecentActivitiesAsRead(data.patient.id, latestActivityTimestamp);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
     }
   }, [
     data,
