@@ -7,9 +7,12 @@ import {
   Patch,
   Post,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import type { Response } from 'express';
 import { CreatePatientExerciseDto } from './dto/create-patient-exercise.dto';
 import { CreatePatientExerciseCheckDto } from './dto/create-patient-exercise-check.dto';
 import { CreatePatientInteractionDto } from './dto/create-patient-interaction.dto';
@@ -28,7 +31,9 @@ type JwtRequest = {
 @Controller('patient-dashboard')
 @UseGuards(AuthGuard('jwt'))
 export class PatientDashboardController {
-  constructor(private readonly patientDashboardService: PatientDashboardService) {}
+  constructor(
+    private readonly patientDashboardService: PatientDashboardService,
+  ) {}
 
   @Get('me')
   getMyDashboard(@Req() req: JwtRequest) {
@@ -54,7 +59,11 @@ export class PatientDashboardController {
     @Param('exerciseId') exerciseId: string,
     @Body() dto: CreatePatientExerciseCheckDto,
   ) {
-    return this.patientDashboardService.savePatientExerciseCheck(req.user, exerciseId, dto);
+    return this.patientDashboardService.savePatientExerciseCheck(
+      req.user,
+      exerciseId,
+      dto,
+    );
   }
 
   @Post('me/interactions')
@@ -66,7 +75,10 @@ export class PatientDashboardController {
   }
 
   @Get('patient/:patientId')
-  getPatientDashboard(@Req() req: JwtRequest, @Param('patientId') patientId: string) {
+  getPatientDashboard(
+    @Req() req: JwtRequest,
+    @Param('patientId') patientId: string,
+  ) {
     return this.patientDashboardService.getPatientDashboardForProfessional(
       req.user,
       patientId,
@@ -102,11 +114,18 @@ export class PatientDashboardController {
     @Param('exerciseId') exerciseId: string,
     @Body() dto: UpdatePatientExerciseDto,
   ) {
-    return this.patientDashboardService.updateExercise(req.user, exerciseId, dto);
+    return this.patientDashboardService.updateExercise(
+      req.user,
+      exerciseId,
+      dto,
+    );
   }
 
   @Delete('exercises/:exerciseId')
-  removeExercise(@Req() req: JwtRequest, @Param('exerciseId') exerciseId: string) {
+  removeExercise(
+    @Req() req: JwtRequest,
+    @Param('exerciseId') exerciseId: string,
+  ) {
     return this.patientDashboardService.removeExercise(req.user, exerciseId);
   }
 
@@ -116,7 +135,11 @@ export class PatientDashboardController {
     @Param('patientId') patientId: string,
     @Body() dto: CreatePatientInteractionDto,
   ) {
-    return this.patientDashboardService.addInteraction(req.user, patientId, dto);
+    return this.patientDashboardService.addInteraction(
+      req.user,
+      patientId,
+      dto,
+    );
   }
 
   @Get('physio/chats')
@@ -134,7 +157,10 @@ export class PatientDashboardController {
     @Req() req: JwtRequest,
     @Param('patientId') patientId: string,
   ) {
-    return this.patientDashboardService.getPhysioChatConversation(req.user, patientId);
+    return this.patientDashboardService.getPhysioChatConversation(
+      req.user,
+      patientId,
+    );
   }
 
   @Post('physio/chats/:patientId/messages')
@@ -143,16 +169,31 @@ export class PatientDashboardController {
     @Param('patientId') patientId: string,
     @Body() dto: CreatePatientInteractionDto,
   ) {
-    return this.patientDashboardService.sendPhysioChatMessage(req.user, patientId, dto);
+    return this.patientDashboardService.sendPhysioChatMessage(
+      req.user,
+      patientId,
+      dto,
+    );
   }
 
   @Get('patient/:patientId/report')
-  getReport(@Req() req: JwtRequest, @Param('patientId') patientId: string) {
-    return this.patientDashboardService.getPatientReport(req.user, patientId);
-  }
+  async getReport(
+    @Req() req: JwtRequest,
+    @Param('patientId') patientId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const report = await this.patientDashboardService.getPatientDocxReport(
+      req.user,
+      patientId,
+    );
 
-  @Get('patient/:patientId/report-csv')
-  getCsvReport(@Req() req: JwtRequest, @Param('patientId') patientId: string) {
-    return this.patientDashboardService.getPatientCsvReport(req.user, patientId);
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="${report.fileName}"`,
+      'Content-Length': String(report.content.length),
+    });
+
+    return new StreamableFile(report.content);
   }
 }

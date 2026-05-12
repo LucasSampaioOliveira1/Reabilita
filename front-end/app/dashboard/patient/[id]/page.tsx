@@ -226,17 +226,30 @@ export default function PatientProfilePage() {
     setSaving(true);
     setError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/patient/${patientId}/report-csv`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/patient/${patientId}/report`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Erro ao gerar relatório.');
+      if (!response.ok) {
+        let message = 'Erro ao gerar relatório.';
 
-      const blob = new Blob([result.content], { type: 'text/csv;charset=utf-8;' });
+        try {
+          const result = await response.json();
+          message = result.message || message;
+        } catch {
+          message = 'Erro ao gerar relatório.';
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('content-disposition');
+      const fileNameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+      const fileName = fileNameMatch?.[1] ?? `relatorio-paciente-${patientId}.docx`;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = result.fileName ?? 'relatorio-paciente.csv';
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();

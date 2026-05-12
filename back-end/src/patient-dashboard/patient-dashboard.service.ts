@@ -4,6 +4,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  AlignmentType,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableLayoutType,
+  TableRow,
+  TextRun,
+  VerticalAlign,
+  WidthType,
+} from 'docx';
 import { PrismaService } from '../prisma/prisma.service';
 import { PatientsRepository } from '../patients/repositories/patients.repository';
 import { CreatePatientExerciseDto } from './dto/create-patient-exercise.dto';
@@ -14,6 +28,10 @@ import { CreatePatientVideoDto } from './dto/create-patient-video.dto';
 import { UpdatePatientExerciseDto } from './dto/update-patient-exercise.dto';
 
 type JwtUser = { sub: string; role: string };
+
+const REPORT_LABEL_COLUMN_WIDTH = 3200;
+const REPORT_VALUE_COLUMN_WIDTH = 6200;
+const REPORT_TABLE_WIDTH = REPORT_LABEL_COLUMN_WIDTH + REPORT_VALUE_COLUMN_WIDTH;
 
 @Injectable()
 export class PatientDashboardService {
@@ -83,6 +101,101 @@ export class PatientDashboardService {
       totalExercises,
       completedExercises,
     };
+  }
+
+  private formatDate(date: Date | null | undefined) {
+    if (!date) return 'Não informado';
+    return new Date(date).toLocaleDateString('pt-BR');
+  }
+
+  private formatDateTime(date: Date | null | undefined) {
+    if (!date) return 'Não informado';
+    return new Date(date).toLocaleString('pt-BR');
+  }
+
+  private formatPatientStatus(status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO') {
+    if (status === 'COMPLETED') return 'Finalizado';
+    if (status === 'DEMITIDO') return 'Demitido';
+    return 'Em andamento';
+  }
+
+  private formatText(value: string | null | undefined) {
+    const normalizedValue = value?.trim();
+    return normalizedValue ? normalizedValue : 'Não informado';
+  }
+
+  private buildInfoRow(label: string, value: string) {
+    return new TableRow({
+      children: [
+        new TableCell({
+          width: { size: REPORT_LABEL_COLUMN_WIDTH, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: {
+            top: 120,
+            bottom: 120,
+            left: 140,
+            right: 140,
+          },
+          children: [
+            new Paragraph({
+              spacing: { after: 0 },
+              children: [new TextRun({ text: label, bold: true })],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: REPORT_VALUE_COLUMN_WIDTH, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: {
+            top: 120,
+            bottom: 120,
+            left: 140,
+            right: 140,
+          },
+          children: [
+            new Paragraph({
+              spacing: { after: 0 },
+              children: [new TextRun(value)],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  private createInfoTable(rows: TableRow[]) {
+    return new Table({
+      width: { size: REPORT_TABLE_WIDTH, type: WidthType.DXA },
+      columnWidths: [REPORT_LABEL_COLUMN_WIDTH, REPORT_VALUE_COLUMN_WIDTH],
+      layout: TableLayoutType.FIXED,
+      rows,
+    });
+  }
+
+  private createSectionHeading(title: string) {
+    return new Paragraph({
+      text: title,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 320, after: 180 },
+      thematicBreak: true,
+    });
+  }
+
+  private createBulletParagraph(text: string) {
+    return new Paragraph({
+      text,
+      bullet: { level: 0 },
+      spacing: { after: 100 },
+    });
+  }
+
+  private sanitizeFileName(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
   }
 
   async getPatientDashboardByUser(userId: string) {
@@ -742,33 +855,158 @@ export class PatientDashboardService {
       patient: {
         id: dashboard.patient.id,
         name: dashboard.patient.user.name,
+        loginCode: dashboard.patient.user.loginCode,
+        cpf: dashboard.patient.cpf,
+        phone: dashboard.patient.phone,
+        address: dashboard.patient.address,
+        birthDate: dashboard.patient.birthDate,
+        age: dashboard.patient.age,
         condition: dashboard.patient.condition,
         phase: dashboard.patient.phase,
         status: dashboard.patient.status,
       },
       summary: dashboard.summary,
+      videos: dashboard.videos,
+      exercises: dashboard.exercises,
       sessions: dashboard.sessions,
       interactions: dashboard.interactions,
     };
   }
 
-  async getPatientCsvReport(user: JwtUser, patientId: string) {
+  async getPatientDocxReport(user: JwtUser, patientId: string) {
     const report = await this.getPatientReport(user, patientId);
-    const rows = [
-      ['Paciente', report.patient.name],
-      ['Condição', report.patient.condition],
-      ['Fase', String(report.patient.phase)],
-      ['Status', report.patient.status],
-      ['Dor (EVA)', String(report.summary.latestPainLevel ?? 'Sem registro')],
-      ['Último registro de dor', report.summary.latestPainAt ? new Date(report.summary.latestPainAt).toLocaleString('pt-BR') : 'Sem registro'],
-      ['Exercícios concluídos', String(report.summary.completedExercises)],
-      ['Total de exercícios', String(report.summary.totalExercises)],
-    ];
 
-    const csv = rows.map((row) => row.map((item) => `"${item.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const identificationTable = this.createInfoTable([
+        this.buildInfoRow('Nome do paciente', report.patient.name),
+        this.buildInfoRow('Login', this.formatText(report.patient.loginCode)),
+        this.buildInfoRow('CPF', this.formatText(report.patient.cpf)),
+        this.buildInfoRow('Telefone', this.formatText(report.patient.phone)),
+        this.buildInfoRow('Data de nascimento', this.formatDate(report.patient.birthDate)),
+        this.buildInfoRow('Idade', `${report.patient.age} anos`),
+        this.buildInfoRow('Endereço', this.formatText(report.patient.address)),
+        this.buildInfoRow('Condição', this.formatText(report.patient.condition)),
+        this.buildInfoRow('Fase atual', `Fase ${report.patient.phase}`),
+        this.buildInfoRow('Status', this.formatPatientStatus(report.patient.status)),
+      ]);
+
+    const summaryTable = this.createInfoTable([
+        this.buildInfoRow(
+          'Última dor registrada (EVA)',
+          report.summary.latestPainLevel !== null
+            ? `${report.summary.latestPainLevel}/10`
+            : 'Sem registro',
+        ),
+        this.buildInfoRow(
+          'Data do último registro de dor',
+          this.formatDateTime(report.summary.latestPainAt),
+        ),
+        this.buildInfoRow(
+          'Exercícios concluídos',
+          `${report.summary.completedExercises}/${report.summary.totalExercises}`,
+        ),
+        this.buildInfoRow('Relatório gerado em', this.formatDateTime(report.generatedAt)),
+      ]);
+
+    const painHistoryParagraphs =
+      report.sessions.length > 0
+        ? report.sessions.slice(0, 12).map((session) =>
+            this.createBulletParagraph(
+              `${this.formatDateTime(session.date)} - EVA ${session.painLevel}/10`,
+            ),
+          )
+        : [new Paragraph('Nenhum registro de dor encontrado até o momento.')];
+
+    const exercisesParagraphs =
+      report.exercises.length > 0
+        ? report.exercises.map((exercise) =>
+            this.createBulletParagraph(
+              `${exercise.title} | Fase ${exercise.phase} | ${exercise.completed ? 'Concluído' : 'Pendente'}${
+                exercise.lastCheckAt
+                  ? ` | Última atualização: ${this.formatDateTime(exercise.lastCheckAt)}`
+                  : ''
+              }`,
+            ),
+          )
+        : [new Paragraph('Nenhum exercício prescrito para este paciente.')];
+
+    const videoParagraphs =
+      report.videos.length > 0
+        ? report.videos.map((video) =>
+            this.createBulletParagraph(
+              `${video.title} | Fase ${video.phase} | ${video.videoUrl}`,
+            ),
+          )
+        : [new Paragraph('Nenhum vídeo cadastrado para este paciente.')];
+
+    const interactionParagraphs =
+      report.interactions.length > 0
+        ? report.interactions.slice(-12).reverse().map((interaction) =>
+            this.createBulletParagraph(
+              `${this.formatDateTime(interaction.createdAt)} - ${interaction.author.name} (${
+                interaction.author.role === 'physio' ? 'Fisioterapeuta' : 'Paciente'
+              }): ${interaction.note}`,
+            ),
+          )
+        : [new Paragraph('Nenhuma interação registrada até o momento.')];
+
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 120 },
+              children: [
+                new TextRun({
+                  text: 'Reabilita Serra',
+                  bold: true,
+                  size: 34,
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 80 },
+              children: [
+                new TextRun({
+                  text: 'Relatório de Acompanhamento do Paciente',
+                  bold: true,
+                  size: 26,
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 280 },
+              children: [
+                new TextRun({
+                  text: `Documento gerado em ${this.formatDateTime(report.generatedAt)}`,
+                  italics: true,
+                }),
+              ],
+            }),
+            this.createSectionHeading('Identificação do Paciente'),
+            identificationTable,
+            this.createSectionHeading('Resumo do Acompanhamento'),
+            summaryTable,
+            this.createSectionHeading('Histórico de Dor (EVA)'),
+            ...painHistoryParagraphs,
+            this.createSectionHeading('Exercícios Prescritos'),
+            ...exercisesParagraphs,
+            this.createSectionHeading('Vídeos de Apoio'),
+            ...videoParagraphs,
+            this.createSectionHeading('Interações Recentes'),
+            ...interactionParagraphs,
+          ],
+        },
+      ],
+    });
+
+    const fileNameBase = this.sanitizeFileName(report.patient.name || report.patient.id);
+
     return {
-      fileName: `relatorio-paciente-${report.patient.id}.csv`,
-      content: csv,
+      fileName: `relatorio-paciente-${fileNameBase || report.patient.id}.docx`,
+      content: await Packer.toBuffer(doc),
     };
   }
 
