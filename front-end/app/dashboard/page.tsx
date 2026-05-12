@@ -10,6 +10,7 @@ const PHYSIO_ACTIVITY_READ_STORAGE_KEY = 'physio-notifications:read-activities';
 const PHYSIO_CHAT_OPEN_EVENT = 'physio-chat:open-patient';
 const PHYSIO_CHAT_READ_EVENT = 'physio-chat:read-updated';
 const PATIENTS_PER_PAGE = 10;
+const PATIENT_LOGIN_URL = 'https://reabilita-taupe.vercel.app/patient';
 
 function getUserFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -193,6 +194,7 @@ export default function DashboardPage() {
   const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>({});
   const [readRecentActivityAt, setReadRecentActivityAt] = useState(0);
   const [currentPatientsPage, setCurrentPatientsPage] = useState(1);
+  const [copyFeedback, setCopyFeedback] = useState('');
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -554,6 +556,7 @@ export default function DashboardPage() {
   const closeModal = () => {
     setShowModal(false);
     setCreatedLoginCode(null);
+    setCopyFeedback('');
     setError('');
     setFormData({
       name: '',
@@ -564,6 +567,15 @@ export default function DashboardPage() {
       password: '',
       condition: 'Fratura de Rádio Distal'
     });
+  };
+
+  const handleCopyPatientLoginUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(PATIENT_LOGIN_URL);
+      setCopyFeedback('URL copiada com sucesso.');
+    } catch {
+      setCopyFeedback('Nao foi possivel copiar a URL automaticamente.');
+    }
   };
 
   const getInitials = (name: string) => {
@@ -1248,6 +1260,26 @@ export default function DashboardPage() {
                   <p className="text-sm text-[#3A6C89] mb-2">Código de Login:</p>
                   <p className="text-4xl font-bold text-[#096196] font-mono tracking-wider">{createdLoginCode}</p>
                   <p className="text-sm text-[#3A6C89] mt-3">Anote este código. O paciente usará para fazer login.</p>
+                </div>
+
+                <div className="bg-white border border-[#CBE9FB] rounded-xl p-5 mb-6 text-left">
+                  <p className="text-sm font-semibold text-[#096196]">URL da tela de login do paciente</p>
+                  <p className="mt-2 break-all rounded-lg bg-[#F8FCFF] px-3 py-3 text-sm text-[#3A6C89] border border-[#DCEFFC]">
+                    {PATIENT_LOGIN_URL}
+                  </p>
+                  <p className="text-sm text-[#3A6C89] mt-3">
+                    Envie esta URL para o paciente acessar a tela de login.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyPatientLoginUrl()}
+                    className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#CBE9FB] bg-white px-4 py-2 text-sm font-semibold text-[#096196] transition-all hover:bg-[#E5F5FF]"
+                  >
+                    Copiar URL
+                  </button>
+                  {copyFeedback ? (
+                    <p className="mt-3 text-sm text-[#096196]">{copyFeedback}</p>
+                  ) : null}
                 </div>
 
                 <button
