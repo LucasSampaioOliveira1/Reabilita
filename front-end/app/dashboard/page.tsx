@@ -841,7 +841,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl shadow-lg border border-[#CBE9FB]">
           <div className="px-6 py-4 border-b border-[#CBE9FB]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-xl font-semibold text-[#096196]">Pacientes Ativos</h2>
+              <h2 className="text-xl font-semibold text-[#096196]">Pacientes</h2>
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <select
                   value={statusFilter}
@@ -955,10 +955,6 @@ export default function DashboardPage() {
                           <div className="bg-white px-3 py-1.5 rounded-lg border border-[#CBE9FB] shadow-sm flex items-center gap-2" title="Idade">
                             <span className="text-[#3A6C89]">Idade:</span>
                             <span className="font-semibold text-[#096196]">{patient.age} anos</span>
-                          </div>
-                          <div className="bg-white px-3 py-1.5 rounded-lg border border-[#CBE9FB] shadow-sm flex items-center gap-2" title="CPF">
-                            <span className="text-[#3A6C89]">CPF:</span>
-                            <span className="font-semibold text-[#096196]">{patient.cpf}</span>
                           </div>
                         </div>
 
