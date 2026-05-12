@@ -206,6 +206,110 @@ export class PatientDashboardService {
     return this.getPatientDashboardById(patient.id);
   }
 
+  async getPatientNotifications(user: JwtUser) {
+    this.ensurePatient(user);
+
+    const patient = await this.patientsRepository.findByUserId(user.sub);
+    if (!patient) {
+      throw new NotFoundException('Perfil de paciente não encontrado.');
+    }
+
+    const { start, end } = this.getTodayRange();
+
+    const [
+      physioMessages,
+      physioMessageCount,
+      recentVideos,
+      recentExercises,
+      hasTodayPainRecord,
+    ] = await Promise.all([
+      this.prisma.patientInteraction.findMany({
+        where: {
+          patientId: patient.id,
+          author: {
+            is: { role: 'physio' },
+          },
+        },
+        include: {
+          author: {
+            select: {
+              name: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      this.countPatientMessagesByAuthorRole(patient.id, 'physio'),
+      this.prisma.patientVideo.findMany({
+        where: { patientId: patient.id },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      }),
+      this.prisma.patientExercise.findMany({
+        where: { patientId: patient.id, isActive: true },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      }),
+      this.prisma.painRecord.findFirst({
+        where: {
+          patientId: patient.id,
+          date: {
+            gte: start,
+            lte: end,
+          },
+        },
+      }),
+    ]);
+
+    const recentActivities = [
+      ...physioMessages.map((message) => ({
+        id: `message-${message.id}`,
+        type: 'physio_message',
+        title: 'Nova mensagem do fisioterapeuta',
+        description: message.note,
+        createdAt: message.createdAt,
+      })),
+      ...recentVideos.map((video) => ({
+        id: `video-${video.id}`,
+        type: 'video_added',
+        title: 'Novo video disponivel',
+        description: `${video.title} foi adicionado para a sua fase ${video.phase}.`,
+        createdAt: video.createdAt,
+      })),
+      ...recentExercises.map((exercise) => ({
+        id: `exercise-${exercise.id}`,
+        type: 'exercise_added',
+        title: 'Novo exercicio disponivel',
+        description: `${exercise.title} foi adicionado ao seu plano de exercicios.`,
+        createdAt: exercise.createdAt,
+      })),
+      {
+        id: hasTodayPainRecord ? 'reminder-done' : 'reminder-pending',
+        type: 'daily_reminder',
+        title: hasTodayPainRecord
+          ? 'Registro diario concluido'
+          : 'Lembrete diario de dor (EVA)',
+        description: hasTodayPainRecord
+          ? 'Seu registro diario de dor (EVA) de hoje ja foi realizado.'
+          : 'Nao se esqueca de registrar seu nivel de dor (EVA) de hoje.',
+        createdAt: new Date(),
+      },
+    ]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 12);
+
+    return {
+      summary: {
+        unreadPhysioMessages: physioMessageCount,
+      },
+      pendingMessages: physioMessages,
+      recentActivities,
+      generatedAt: new Date(),
+    };
+  }
+
   async getPatientDashboardForProfessional(user: JwtUser, patientId: string) {
     this.ensurePhysio(user);
     return this.getPatientDashboardById(patientId);

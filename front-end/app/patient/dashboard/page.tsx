@@ -42,6 +42,26 @@ type DashboardData = {
   notifications: string[];
 };
 
+type PatientNotificationsData = {
+  summary: {
+    unreadPhysioMessages: number;
+  };
+  pendingMessages: Array<{
+    id: string;
+    note: string;
+    createdAt: string;
+    author: { name: string; role: string };
+  }>;
+  recentActivities: Array<{
+    id: string;
+    type: 'physio_message' | 'video_added' | 'exercise_added' | 'daily_reminder';
+    title: string;
+    description: string;
+    createdAt: string;
+  }>;
+  generatedAt: string;
+};
+
 function getPatientChatReadStorageKey(patientId: string) {
   return `${PATIENT_CHAT_READ_STORAGE_PREFIX}${patientId}`;
 }
@@ -144,7 +164,11 @@ export default function PatientDashboardPage() {
   const [checkingExerciseId, setCheckingExerciseId] = useState<string | null>(null);
   const [isPainConfirmOpen, setIsPainConfirmOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [readPhysioMessageCount, setReadPhysioMessageCount] = useState(0);
+  const [notificationsData, setNotificationsData] = useState<PatientNotificationsData | null>(null);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
   const chatMessagesRef = useRef<HTMLDivElement | null>(null);
   const isChatOpenRef = useRef(false);
   const activePatientIdRef = useRef<string | null>(null);
@@ -232,6 +256,47 @@ export default function PatientDashboardPage() {
     [auth, markPhysioMessagesAsRead],
   );
 
+  const loadNotifications = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!auth) return;
+
+      try {
+        if (!silent) {
+          setIsLoadingNotifications(true);
+          setNotificationsError('');
+        }
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/me/notifications`,
+          {
+            cache: 'no-store',
+            headers: {
+              Authorization: `Bearer ${auth.token}`,
+            },
+          },
+        );
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Erro ao carregar notificacoes.');
+        }
+
+        setNotificationsData(result);
+      } catch (err) {
+        if (!silent) {
+          setNotificationsError(
+            err instanceof Error ? err.message : 'Erro ao carregar notificacoes.',
+          );
+        }
+      } finally {
+        if (!silent) {
+          setIsLoadingNotifications(false);
+        }
+      }
+    },
+    [auth],
+  );
+
   useEffect(() => {
     if (!auth) {
       router.push('/patient');
@@ -263,15 +328,28 @@ export default function PatientDashboardPage() {
   useEffect(() => {
     if (!auth) return;
 
+    const timeoutId = window.setTimeout(() => {
+      void loadNotifications();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [auth, loadNotifications]);
+
+  useEffect(() => {
+    if (!auth) return;
+
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return;
       void loadChatInteractions({ silent: true });
+      void loadNotifications({ silent: true });
     }, isChatOpen ? CHAT_SYNC_INTERVAL_OPEN_MS : CHAT_SYNC_INTERVAL_IDLE_MS);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [auth, isChatOpen, loadChatInteractions]);
+  }, [auth, isChatOpen, loadChatInteractions, loadNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -411,6 +489,49 @@ export default function PatientDashboardPage() {
     currentPhysioMessages - readPhysioMessageCount,
   );
 
+  const handleOpenNotificationsChat = () => {
+    markPhysioMessagesAsRead(data.patient.id, currentPhysioMessages);
+    setIsNotificationsOpen(false);
+    setIsChatOpen(true);
+  };
+
+  const formatNotificationDate = (date: string) =>
+    new Date(date).toLocaleString('pt-BR');
+
+  const getActivityAccent = (
+    type: PatientNotificationsData['recentActivities'][number]['type'],
+  ) => {
+    if (type === 'physio_message') {
+      return {
+        bg: 'bg-[#E5F5FF]',
+        border: 'border-[#CBE9FB]',
+        text: 'text-[#096196]',
+      };
+    }
+
+    if (type === 'video_added') {
+      return {
+        bg: 'bg-[#F0F8FF]',
+        border: 'border-[#D7EAFE]',
+        text: 'text-[#0B78B7]',
+      };
+    }
+
+    if (type === 'exercise_added') {
+      return {
+        bg: 'bg-[#EAFBF1]',
+        border: 'border-[#BDE8CC]',
+        text: 'text-[#1F8A4C]',
+      };
+    }
+
+    return {
+      bg: 'bg-[#FFF8D7]',
+      border: 'border-[#F5D96D]',
+      text: 'text-[#8A6400]',
+    };
+  };
+
   const handleToggleChat = () => {
     setIsChatOpen((prev) => {
       const next = !prev;
@@ -440,7 +561,26 @@ export default function PatientDashboardPage() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 sm:space-x-4 border-l border-[#CBE9FB] pl-4 sm:pl-6 shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4 border-l border-[#CBE9FB] pl-4 sm:pl-6 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotificationsOpen(true);
+                  void loadNotifications();
+                }}
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#CBE9FB] bg-white text-[#096196] shadow-sm transition-all duration-200 hover:bg-[#E5F5FF] hover:shadow-lg"
+                title="Abrir notificacoes"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadPhysioMessages > 0 ? (
+                  <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {unreadPhysioMessages > 99 ? '99+' : unreadPhysioMessages}
+                  </span>
+                ) : null}
+              </button>
+
               <div className="text-right hidden lg:block">
                 <p className="text-sm font-bold text-[#096196] leading-none">{data.patient.user.name}</p>
                 <p className="text-xs text-[#3A6C89] mt-1">Paciente</p>
@@ -506,7 +646,7 @@ export default function PatientDashboardPage() {
                     <div className="border-r border-[#D6EEFC] bg-[#FFF8D7] px-2 py-2">Moderada</div>
                     <div className="bg-[#FFE0D6] px-2 py-2">Intensa</div>
                   </div>
-                  <div className="grid grid-cols-11 gap-[2px] bg-[#D6EEFC] p-[2px]">
+                  <div className="grid grid-cols-11 gap-0.5 bg-[#D6EEFC] p-0.5">
                     {PAIN_SCALE_OPTIONS.map((option) => {
                       const isSelected = painLevel === option.value;
 
@@ -517,7 +657,7 @@ export default function PatientDashboardPage() {
                           onClick={() => setPainLevel(option.value)}
                           disabled={hasTodayPainRecord}
                           aria-pressed={isSelected}
-                          className={`group flex min-h-24 flex-col items-center justify-center gap-2 bg-gradient-to-b px-1 py-3 text-center transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-28 ${option.color} ${
+                          className={`group flex min-h-24 flex-col items-center justify-center gap-2 bg-linear-to-b px-1 py-3 text-center transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-28 ${option.color} ${
                             isSelected
                               ? 'ring-4 ring-[#096196] ring-inset scale-[0.98]'
                               : 'hover:scale-[1.02]'
@@ -690,6 +830,153 @@ export default function PatientDashboardPage() {
                 {isSavingSession ? 'Salvando...' : 'Confirmar'}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isNotificationsOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-[#CBE9FB] bg-white p-6 shadow-2xl">
+            <div className="flex flex-col gap-4 border-b border-[#DCEFFC] pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#E5F5FF] text-[#096196]">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-[#096196]">Central de Notificacoes</h3>
+                    <p className="mt-1 text-sm text-[#3A6C89]">
+                      Acompanhe mensagens do fisioterapeuta e atualizacoes do seu plano.
+                    </p>
+                  </div>
+                </div>
+                {notificationsData?.generatedAt ? (
+                  <p className="mt-3 text-xs text-[#3A6C89]">
+                    Ultima atualizacao: {formatNotificationDate(notificationsData.generatedAt)}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void loadNotifications()}
+                  className="rounded-lg border border-[#CBE9FB] bg-white px-4 py-2 text-sm font-semibold text-[#096196] transition-all hover:bg-[#E5F5FF]"
+                >
+                  Atualizar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNotificationsOpen(false)}
+                  className="rounded-lg bg-[#096196] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#0B78B7]"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+
+            {notificationsError ? (
+              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {notificationsError}
+              </div>
+            ) : null}
+
+            {isLoadingNotifications && !notificationsData ? (
+              <div className="py-16 text-center">
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-[#096196]"></div>
+                <p className="mt-4 text-sm text-[#3A6C89]">Carregando notificacoes...</p>
+              </div>
+            ) : notificationsData ? (
+              <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_1fr]">
+                <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#E5F2FB] pb-4">
+                    <div>
+                      <h4 className="text-lg font-bold text-[#096196]">Mensagens Pendentes</h4>
+                      <p className="mt-1 text-sm text-[#3A6C89]">
+                        Mensagens do fisioterapeuta aguardando leitura.
+                      </p>
+                    </div>
+                    <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#096196] px-2 py-1 text-xs font-bold text-white">
+                      {unreadPhysioMessages}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {notificationsData.pendingMessages.length === 0 || unreadPhysioMessages === 0 ? (
+                      <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] px-4 py-5 text-sm text-[#3A6C89]">
+                        Nenhuma mensagem pendente no momento.
+                      </div>
+                    ) : (
+                      notificationsData.pendingMessages
+                        .slice(0, unreadPhysioMessages)
+                        .map((message) => (
+                          <div
+                            key={message.id}
+                            className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4"
+                          >
+                            <p className="text-sm font-bold text-[#096196]">
+                              {message.author.name}
+                            </p>
+                            <p className="mt-2 text-sm text-[#096196]">{message.note}</p>
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-[11px] text-[#3A6C89]">
+                                {formatNotificationDate(message.createdAt)}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={handleOpenNotificationsChat}
+                                className="inline-flex items-center justify-center rounded-lg bg-[#096196] px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-[#0B78B7]"
+                              >
+                                Abrir Chat
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
+                  <div className="border-b border-[#E5F2FB] pb-4">
+                    <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
+                    <p className="mt-1 text-sm text-[#3A6C89]">
+                      Novidades do seu acompanhamento e do seu plano.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {notificationsData.recentActivities.length === 0 ? (
+                      <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] px-4 py-5 text-sm text-[#3A6C89]">
+                        Nenhuma atividade recente encontrada.
+                      </div>
+                    ) : (
+                      notificationsData.recentActivities.map((activity) => {
+                        const accent = getActivityAccent(activity.type);
+
+                        return (
+                          <div
+                            key={activity.id}
+                            className={`rounded-xl border p-4 ${accent.bg} ${accent.border}`}
+                          >
+                            <p className={`text-sm font-bold ${accent.text}`}>
+                              {activity.title}
+                            </p>
+                            <p className="mt-2 text-sm text-[#096196]">
+                              {activity.description}
+                            </p>
+                            <p className="mt-2 text-[11px] text-[#3A6C89]">
+                              {formatNotificationDate(activity.createdAt)}
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
