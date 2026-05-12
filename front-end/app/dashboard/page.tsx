@@ -195,6 +195,7 @@ export default function DashboardPage() {
   const [readRecentActivityAt, setReadRecentActivityAt] = useState(0);
   const [currentPatientsPage, setCurrentPatientsPage] = useState(1);
   const [copyFeedback, setCopyFeedback] = useState('');
+  const [copiedPatientUrlId, setCopiedPatientUrlId] = useState<string | null>(null);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -569,12 +570,25 @@ export default function DashboardPage() {
     });
   };
 
-  const handleCopyPatientLoginUrl = async () => {
+  const handleCopyPatientLoginUrl = async (patientId?: string) => {
     try {
       await navigator.clipboard.writeText(PATIENT_LOGIN_URL);
-      setCopyFeedback('URL copiada com sucesso.');
+      if (patientId) {
+        setCopiedPatientUrlId(patientId);
+        window.setTimeout(() => {
+          setCopiedPatientUrlId(currentPatientId =>
+            currentPatientId === patientId ? null : currentPatientId,
+          );
+        }, 2000);
+      } else {
+        setCopyFeedback('URL copiada com sucesso.');
+      }
     } catch {
-      setCopyFeedback('Nao foi possivel copiar a URL automaticamente.');
+      if (patientId) {
+        setCopiedPatientUrlId(null);
+      } else {
+        setCopyFeedback('Nao foi possivel copiar a URL automaticamente.');
+      }
     }
   };
 
@@ -959,15 +973,30 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                           <div className="bg-white px-3 py-1.5 rounded-lg border border-[#CBE9FB] shadow-sm flex items-center gap-2" title="Código de Login">
                             <span className="text-[#3A6C89]">Login:</span>
                             <span className="font-semibold text-[#096196] font-mono">{patient.user.loginCode}</span>
                           </div>
-                          <div className="bg-white px-3 py-1.5 rounded-lg border border-[#CBE9FB] shadow-sm flex items-center gap-2" title="Idade">
-                            <span className="text-[#3A6C89]">Idade:</span>
-                            <span className="font-semibold text-[#096196]">{patient.age} anos</span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPatientLoginUrl(patient.id)}
+                            className="inline-flex items-center rounded-lg border border-[#CBE9FB] bg-white shadow-sm hover:bg-[#E5F5FF] transition-colors overflow-hidden"
+                            title="Copiar URL do portal do paciente"
+                          >
+                            <span
+                              className="border-r border-[#CBE9FB] px-3 py-1.5 text-xs text-[#3A6C89]"
+                              title={PATIENT_LOGIN_URL}
+                            >
+                              reabilita.../patient
+                            </span>
+                            <span className="bg-[#096196] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF]">
+                              Copiar
+                            </span>
+                          </button>
+                          {copiedPatientUrlId === patient.id ? (
+                            <span className="text-xs font-semibold text-[#096196]">Copiado</span>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center space-x-2 sm:justify-end">
