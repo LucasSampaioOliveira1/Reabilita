@@ -135,6 +135,8 @@ export default function PhysioChatWidget({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const isOpenRef = useRef(isOpen);
+  const hasMountedReadCountsRef = useRef(false);
+  const previousReadCountsRef = useRef<Record<string, number>>(readCounts);
 
   const markPatientAsRead = useCallback((patientId: string, messageCount: number) => {
     setReadCounts((prev) => {
@@ -147,14 +149,6 @@ export default function PhysioChatWidget({
         [patientId]: messageCount,
       };
     });
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent(PHYSIO_CHAT_READ_EVENT, {
-          detail: { patientId, messageCount },
-        }),
-      );
-    }
   }, []);
 
   const loadChatList = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -315,6 +309,37 @@ export default function PhysioChatWidget({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    if (!hasMountedReadCountsRef.current) {
+      hasMountedReadCountsRef.current = true;
+      previousReadCountsRef.current = readCounts;
+      return;
+    }
+
+    const previousReadCounts = previousReadCountsRef.current;
+    const hasChanges =
+      Object.keys(readCounts).length !== Object.keys(previousReadCounts).length ||
+      Object.entries(readCounts).some(
+        ([patientId, messageCount]) => previousReadCounts[patientId] !== messageCount,
+      );
+
+    previousReadCountsRef.current = readCounts;
+
+    if (!hasChanges) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(PHYSIO_CHAT_READ_EVENT));
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [readCounts]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handleOpenPatient = (event: Event) => {
       const customEvent = event as CustomEvent<{ patientId?: string }>;
       const patientId = customEvent.detail?.patientId;
@@ -416,18 +441,16 @@ export default function PhysioChatWidget({
   };
 
   const handleToggleOpen = () => {
-    setIsOpen((prev) => {
-      const next = !prev;
+    const isOpening = !isOpen;
 
-      if (next && activeConversation && effectiveSelectedPatientId) {
-        const unreadBaseCount = countIncomingPatientMessages(
-          activeConversation.interactions,
-        );
-        markPatientAsRead(effectiveSelectedPatientId, unreadBaseCount);
-      }
+    if (isOpening && activeConversation && effectiveSelectedPatientId) {
+      const unreadBaseCount = countIncomingPatientMessages(
+        activeConversation.interactions,
+      );
+      markPatientAsRead(effectiveSelectedPatientId, unreadBaseCount);
+    }
 
-      return next;
-    });
+    setIsOpen(isOpening);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
