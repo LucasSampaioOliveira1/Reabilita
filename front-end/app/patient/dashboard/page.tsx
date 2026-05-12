@@ -104,6 +104,33 @@ function getYoutubeEmbedUrl(url: string) {
   }
 }
 
+const PAIN_SCALE_OPTIONS = [
+  { value: 0, label: 'Sem dor', color: 'from-[#DCEBFF] to-[#C9D8F6]' },
+  { value: 1, label: 'Muito leve', color: 'from-[#D6E6FF] to-[#C4D6F6]' },
+  { value: 2, label: 'Leve', color: 'from-[#D2E0FF] to-[#BDCEF1]' },
+  { value: 3, label: 'Leve', color: 'from-[#8EDB52] to-[#67B530]' },
+  { value: 4, label: 'Controlada', color: 'from-[#7DCE41] to-[#5EA825]' },
+  { value: 5, label: 'Moderada', color: 'from-[#FFF45E] to-[#F5E11A]' },
+  { value: 6, label: 'Moderada', color: 'from-[#FFD24F] to-[#F6B400]' },
+  { value: 7, label: 'Forte', color: 'from-[#FFA34D] to-[#F47B20]' },
+  { value: 8, label: 'Intensa', color: 'from-[#FF8C48] to-[#EB5F1C]' },
+  { value: 9, label: 'Muito intensa', color: 'from-[#F36B42] to-[#DB4218]' },
+  { value: 10, label: 'Maxima', color: 'from-[#E85C43] to-[#C7331B]' },
+] as const;
+
+function getPainZoneLabel(value: number) {
+  if (value <= 2) return 'Leve';
+  if (value <= 6) return 'Moderada';
+  return 'Intensa';
+}
+
+function getPainBadgeStyles(value: number | null) {
+  if (value === null) return 'bg-white border-[#CBE9FB] text-[#096196]';
+  if (value <= 2) return 'bg-[#EEF4FF] border-[#C9D8F6] text-[#4D5F87]';
+  if (value <= 6) return 'bg-[#FFF8D7] border-[#F5D96D] text-[#8A6400]';
+  return 'bg-[#FFE0D6] border-[#F2A285] text-[#B03A12]';
+}
+
 export default function PatientDashboardPage() {
   const router = useRouter();
   const [auth] = useState(getPatientAuth);
@@ -471,18 +498,61 @@ export default function PatientDashboardPage() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-[#CBE9FB]">
             <h2 className="text-xl font-bold text-[#096196] mb-4">Registro Diário de Dor (EVA)</h2>
             <form onSubmit={handleSessionSubmit} className="space-y-4">
-              <div>
+              <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4 sm:p-5">
                 <label className="block text-sm font-semibold text-[#3A6C89] mb-2">Dor atual (EVA 0–10)</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={10}
-                  value={painLevel}
-                  onChange={(e) => setPainLevel(Number(e.target.value))}
-                  disabled={hasTodayPainRecord}
-                  className="w-full disabled:opacity-60 disabled:cursor-not-allowed"
-                />
-                <p className="text-[#096196] font-bold mt-1">{painLevel}/10</p>
+                <div className="overflow-hidden rounded-2xl border border-[#D6EEFC] bg-white shadow-sm">
+                  <div className="grid grid-cols-3 border-b border-[#D6EEFC] text-center text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#355B73] sm:text-xs">
+                    <div className="border-r border-[#D6EEFC] bg-[#EEF4FF] px-2 py-2">Leve</div>
+                    <div className="border-r border-[#D6EEFC] bg-[#FFF8D7] px-2 py-2">Moderada</div>
+                    <div className="bg-[#FFE0D6] px-2 py-2">Intensa</div>
+                  </div>
+                  <div className="grid grid-cols-11 gap-[2px] bg-[#D6EEFC] p-[2px]">
+                    {PAIN_SCALE_OPTIONS.map((option) => {
+                      const isSelected = painLevel === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setPainLevel(option.value)}
+                          disabled={hasTodayPainRecord}
+                          aria-pressed={isSelected}
+                          className={`group flex min-h-24 flex-col items-center justify-center gap-2 bg-gradient-to-b px-1 py-3 text-center transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-28 ${option.color} ${
+                            isSelected
+                              ? 'ring-4 ring-[#096196] ring-inset scale-[0.98]'
+                              : 'hover:scale-[1.02]'
+                          }`}
+                        >
+                          <span
+                            className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-extrabold sm:h-10 sm:w-10 sm:text-base ${
+                              isSelected
+                                ? 'border-white bg-white text-[#096196] shadow-md'
+                                : 'border-white/80 bg-white/70 text-[#2B3E4A]'
+                            }`}
+                          >
+                            {option.value}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-[#213844] sm:text-[11px]">
+                            {option.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[#D6EEFC] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[#3A6C89]">Valor selecionado</p>
+                    <p className="mt-1 text-3xl font-bold text-[#096196]">{painLevel}/10</p>
+                  </div>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-sm font-bold ${getPainBadgeStyles(
+                      painLevel,
+                    )}`}
+                  >
+                    {getPainZoneLabel(painLevel)}
+                  </span>
+                </div>
               </div>
               {hasTodayPainRecord ? (
                 <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
