@@ -9,6 +9,7 @@ const PHYSIO_CHAT_READ_STORAGE_KEY = 'physio-chat:read-counts';
 const PHYSIO_ACTIVITY_READ_STORAGE_KEY = 'physio-notifications:read-activities';
 const PHYSIO_CHAT_OPEN_EVENT = 'physio-chat:open-patient';
 const PHYSIO_CHAT_READ_EVENT = 'physio-chat:read-updated';
+const PATIENTS_PER_PAGE = 10;
 
 function getUserFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -191,6 +192,7 @@ export default function DashboardPage() {
   const [notificationsError, setNotificationsError] = useState('');
   const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>({});
   const [readRecentActivityAt, setReadRecentActivityAt] = useState(0);
+  const [currentPatientsPage, setCurrentPatientsPage] = useState(1);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -665,6 +667,13 @@ export default function DashboardPage() {
 
     return patient.cpf.replace(/\D/g, '').includes(normalizedCpfFilter);
   });
+  const totalPatientPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PER_PAGE));
+  const safeCurrentPatientsPage = Math.min(currentPatientsPage, totalPatientPages);
+  const paginatedPatients = filteredPatients.slice(
+    (safeCurrentPatientsPage - 1) * PATIENTS_PER_PAGE,
+    safeCurrentPatientsPage * PATIENTS_PER_PAGE,
+  );
+  const pageNumbers = Array.from({ length: totalPatientPages }, (_, index) => index + 1);
 
   if (!isHydrated || !user) {
     return null;
@@ -836,7 +845,10 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as PatientStatusFilter)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as PatientStatusFilter);
+                    setCurrentPatientsPage(1);
+                  }}
                   className="px-3 py-2 border border-[#CBE9FB] rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                 >
                   <option value="ALL">Todos os Status</option>
@@ -846,7 +858,10 @@ export default function DashboardPage() {
                 </select>
                 <select
                   value={filterField}
-                  onChange={(e) => setFilterField(e.target.value as PatientFilterField)}
+                  onChange={(e) => {
+                    setFilterField(e.target.value as PatientFilterField);
+                    setCurrentPatientsPage(1);
+                  }}
                   className="px-3 py-2 border border-[#CBE9FB] rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#096196]"
                 >
                   <option value="name">Filtrar por Nome</option>
@@ -856,7 +871,10 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   value={filterValue}
-                  onChange={(e) => setFilterValue(e.target.value)}
+                  onChange={(e) => {
+                    setFilterValue(e.target.value);
+                    setCurrentPatientsPage(1);
+                  }}
                   placeholder={
                     filterField === 'name'
                       ? 'Buscar paciente por nome'
@@ -893,8 +911,10 @@ export default function DashboardPage() {
                       Nenhum paciente encontrado para este filtro.
                     </p>
                   </div>
-                ) : filteredPatients.map((patient, index) => {
-                  const avatarColor = getAvatarColor(index);
+                ) : paginatedPatients.map((patient, index) => {
+                  const avatarColor = getAvatarColor(
+                    (safeCurrentPatientsPage - 1) * PATIENTS_PER_PAGE + index,
+                  );
                   const initials = getInitials(patient.user.name);
 
                   return (
@@ -975,6 +995,54 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
+
+                {filteredPatients.length > PATIENTS_PER_PAGE ? (
+                  <div className="flex flex-col gap-3 border-t border-[#D6EEFC] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[#3A6C89]">
+                      Exibindo {(safeCurrentPatientsPage - 1) * PATIENTS_PER_PAGE + 1}
+                      {' '}a{' '}
+                      {Math.min(safeCurrentPatientsPage * PATIENTS_PER_PAGE, filteredPatients.length)}
+                      {' '}de {filteredPatients.length} pacientes
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPatientsPage((prev) => Math.max(1, prev - 1))}
+                        disabled={safeCurrentPatientsPage === 1}
+                        className="rounded-lg border border-[#CBE9FB] bg-white px-3 py-2 text-sm font-semibold text-[#096196] transition-all hover:bg-[#E5F5FF] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Anterior
+                      </button>
+
+                      {pageNumbers.map((pageNumber) => (
+                        <button
+                          key={pageNumber}
+                          type="button"
+                          onClick={() => setCurrentPatientsPage(pageNumber)}
+                          className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg px-3 text-sm font-semibold transition-all ${
+                            pageNumber === safeCurrentPatientsPage
+                              ? 'bg-[#096196] text-white shadow-sm'
+                              : 'border border-[#CBE9FB] bg-white text-[#096196] hover:bg-[#E5F5FF]'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPatientsPage((prev) => Math.min(totalPatientPages, prev + 1))
+                        }
+                        disabled={safeCurrentPatientsPage === totalPatientPages}
+                        className="rounded-lg border border-[#CBE9FB] bg-white px-3 py-2 text-sm font-semibold text-[#096196] transition-all hover:bg-[#E5F5FF] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Proxima
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
