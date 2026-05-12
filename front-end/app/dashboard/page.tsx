@@ -959,42 +959,7 @@ export default function DashboardPage() {
                 <p className="mt-4 text-sm text-[#3A6C89]">Carregando notificacoes...</p>
               </div>
             ) : notifications ? (
-              <div className="mt-6 space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
-                    <p className="text-sm font-medium text-[#3A6C89]">Mensagens nao lidas</p>
-                    <p className="mt-2 text-3xl font-bold text-[#096196]">
-                      {unreadNotificationsCount}
-                    </p>
-                    <p className="mt-1 text-xs text-[#3A6C89]">No chat dos pacientes</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
-                    <p className="text-sm font-medium text-[#3A6C89]">Pacientes com alerta</p>
-                    <p className="mt-2 text-3xl font-bold text-[#096196]">
-                      {pendingMessageNotifications.length}
-                    </p>
-                    <p className="mt-1 text-xs text-[#3A6C89]">Com mensagens para ler</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
-                    <p className="text-sm font-medium text-[#3A6C89]">Pacientes ativos</p>
-                    <p className="mt-2 text-3xl font-bold text-[#096196]">
-                      {notifications.summary.inProgressPatients}
-                    </p>
-                    <p className="mt-1 text-xs text-[#3A6C89]">
-                      {notifications.summary.totalPatients} pacientes no total
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
-                    <p className="text-sm font-medium text-[#3A6C89]">Finalizados e demitidos</p>
-                    <p className="mt-2 text-3xl font-bold text-[#096196]">
-                      {notifications.summary.completedPatients + notifications.summary.demitidoPatients}
-                    </p>
-                    <p className="mt-1 text-xs text-[#3A6C89]">
-                      {notifications.summary.completedPatients} finalizados • {notifications.summary.demitidoPatients} demitidos
-                    </p>
-                  </div>
-                </div>
-
+              <div className="mt-6">
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
                   <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
                     <div className="flex items-center justify-between gap-3 border-b border-[#E5F2FB] pb-4">
