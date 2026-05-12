@@ -722,7 +722,6 @@ export class PatientDashboardService {
       patients,
       patientMessageCounts,
       latestInteractions,
-      recentPatientMessages,
       recentPainRecords,
       recentExerciseChecks,
     ] = await Promise.all([
@@ -776,27 +775,6 @@ export class PatientDashboardService {
             },
           },
         },
-      }),
-      this.prisma.patientInteraction.findMany({
-        where: {
-          author: {
-            is: { role: 'patient' },
-          },
-        },
-        include: {
-          patient: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 8,
       }),
       this.prisma.painRecord.findMany({
         include: {
@@ -877,15 +855,6 @@ export class PatientDashboardService {
       });
 
     const recentActivities = [
-      ...recentPatientMessages.map((message) => ({
-        id: `message-${message.id}`,
-        type: 'chat_message',
-        patientId: message.patientId,
-        patientName: message.patient.user.name,
-        title: 'Nova mensagem do paciente',
-        description: message.note,
-        createdAt: message.createdAt,
-      })),
       ...recentPainRecords.map((record) => ({
         id: `pain-${record.id}`,
         type: 'pain_record',

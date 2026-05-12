@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import PhysioChatWidget from "../components/PhysioChatWidget";
 
 const PHYSIO_CHAT_READ_STORAGE_KEY = 'physio-chat:read-counts';
+const PHYSIO_ACTIVITY_READ_STORAGE_KEY = 'physio-notifications:read-activities';
 const PHYSIO_CHAT_OPEN_EVENT = 'physio-chat:open-patient';
 const PHYSIO_CHAT_READ_EVENT = 'physio-chat:read-updated';
 
@@ -30,6 +31,21 @@ function getUserFromStorage() {
     localStorage.removeItem('user');
     return null;
   }
+}
+
+function getStoredPhysioActivityReadAt() {
+  if (typeof window === 'undefined') return 0;
+
+  const rawValue = localStorage.getItem(PHYSIO_ACTIVITY_READ_STORAGE_KEY);
+  if (!rawValue) return 0;
+
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasStoredPhysioActivityReadAt() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(PHYSIO_ACTIVITY_READ_STORAGE_KEY) !== null;
 }
 
 interface Patient {
@@ -101,7 +117,7 @@ interface PhysioNotificationsData {
   }>;
   recentActivities: Array<{
     id: string;
-    type: 'chat_message' | 'pain_record' | 'exercise_check' | 'patient_created';
+    type: 'pain_record' | 'exercise_check' | 'patient_created';
     patientId: string;
     patientName: string;
     title: string;
@@ -174,17 +190,27 @@ export default function DashboardPage() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
   const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>({});
+  const [readRecentActivityAt, setReadRecentActivityAt] = useState(0);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setUser(getUserFromStorage());
       setChatReadCounts(getStoredPhysioChatReadCounts());
+      setReadRecentActivityAt(getStoredPhysioActivityReadAt());
       setIsHydrated(true);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
+  }, []);
+
+  const markRecentActivitiesAsRead = useCallback((timestamp: number) => {
+    setReadRecentActivityAt(timestamp);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(PHYSIO_ACTIVITY_READ_STORAGE_KEY, String(timestamp));
+    }
   }, []);
 
   const fetchPatients = async () => {
@@ -228,6 +254,18 @@ export default function DashboardPage() {
         throw new Error(data.message || 'Erro ao carregar notificacoes');
       }
 
+      const latestActivityTimestamp = data.recentActivities.reduce(
+        (
+          latest: number,
+          activity: PhysioNotificationsData['recentActivities'][number],
+        ) => Math.max(latest, new Date(activity.createdAt).getTime()),
+        0,
+      );
+
+      if (!hasStoredPhysioActivityReadAt()) {
+        markRecentActivitiesAsRead(latestActivityTimestamp);
+      }
+
       setNotifications(data);
     } catch (err) {
       if (!silent) {
@@ -238,7 +276,7 @@ export default function DashboardPage() {
         setIsLoadingNotifications(false);
       }
     }
-  }, []);
+  }, [markRecentActivitiesAsRead]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -302,6 +340,30 @@ export default function DashboardPage() {
       window.removeEventListener(PHYSIO_CHAT_READ_EVENT, handleReadUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    if (!showNotificationsModal || !notifications) return;
+
+    const latestActivityTimestamp = notifications.recentActivities.reduce(
+      (latest, activity) => Math.max(latest, new Date(activity.createdAt).getTime()),
+      0,
+    );
+
+    if (latestActivityTimestamp > readRecentActivityAt) {
+      const timeoutId = window.setTimeout(() => {
+        markRecentActivitiesAsRead(latestActivityTimestamp);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
+    }
+  }, [
+    markRecentActivitiesAsRead,
+    notifications,
+    readRecentActivityAt,
+    showNotificationsModal,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -527,14 +589,6 @@ export default function DashboardPage() {
   const getActivityAccent = (
     type: PhysioNotificationsData['recentActivities'][number]['type'],
   ) => {
-    if (type === 'chat_message') {
-      return {
-        bg: 'bg-[#E5F5FF]',
-        border: 'border-[#CBE9FB]',
-        text: 'text-[#096196]',
-      };
-    }
-
     if (type === 'pain_record') {
       return {
         bg: 'bg-[#FFF5E8]',
@@ -576,10 +630,16 @@ export default function DashboardPage() {
         }))
         .filter((notification) => notification.effectiveUnreadCount > 0)
     : [];
-  const unreadNotificationsCount = pendingMessageNotifications.reduce(
-    (sum, notification) => sum + notification.effectiveUnreadCount,
-    0,
-  );
+  const unreadRecentActivities = notifications
+    ? notifications.recentActivities.filter(
+        (activity) => new Date(activity.createdAt).getTime() > readRecentActivityAt,
+      ).length
+    : 0;
+  const unreadNotificationsCount =
+    pendingMessageNotifications.reduce(
+      (sum, notification) => sum + notification.effectiveUnreadCount,
+      0,
+    ) + unreadRecentActivities;
   const normalizedFilterValue = filterValue.trim().toLowerCase();
   const normalizedCpfFilter = filterValue.replace(/\D/g, '');
   const filteredPatients = patients.filter((patient) => {
@@ -1041,11 +1101,16 @@ export default function DashboardPage() {
                   </section>
 
                   <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
-                    <div className="border-b border-[#E5F2FB] pb-4">
-                      <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
-                      <p className="mt-1 text-sm text-[#3A6C89]">
-                        Ultimos eventos relevantes dos pacientes.
-                      </p>
+                    <div className="flex items-center justify-between gap-3 border-b border-[#E5F2FB] pb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
+                        <p className="mt-1 text-sm text-[#3A6C89]">
+                          Ultimos eventos relevantes dos pacientes.
+                        </p>
+                      </div>
+                      <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#0B78B7] px-2 py-1 text-xs font-bold text-white">
+                        {unreadRecentActivities}
+                      </span>
                     </div>
 
                     <div className="mt-4 space-y-3">
