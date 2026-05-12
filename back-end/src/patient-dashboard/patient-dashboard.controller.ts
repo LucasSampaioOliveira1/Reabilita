@@ -124,6 +124,11 @@ export class PatientDashboardController {
     return this.patientDashboardService.getPhysioChatList(req.user);
   }
 
+  @Get('physio/notifications')
+  getPhysioNotifications(@Req() req: JwtRequest) {
+    return this.patientDashboardService.getPhysioNotifications(req.user);
+  }
+
   @Get('physio/chats/:patientId')
   getPhysioChatConversation(
     @Req() req: JwtRequest,

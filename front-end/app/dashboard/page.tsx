@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PhysioChatWidget from "../components/PhysioChatWidget";
+
+const PHYSIO_CHAT_READ_STORAGE_KEY = 'physio-chat:read-counts';
+const PHYSIO_CHAT_OPEN_EVENT = 'physio-chat:open-patient';
+const PHYSIO_CHAT_READ_EVENT = 'physio-chat:read-updated';
 
 function getUserFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -71,6 +75,55 @@ interface DeletePatientTarget {
   name: string;
 }
 
+interface PhysioNotificationsData {
+  summary: {
+    totalPatients: number;
+    inProgressPatients: number;
+    completedPatients: number;
+    demitidoPatients: number;
+    totalUnreadMessages: number;
+    patientsWithUnreadMessages: number;
+  };
+  unreadMessages: Array<{
+    patientId: string;
+    patientName: string;
+    loginCode: string | null;
+    condition: string;
+    phase: number;
+    status: 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
+    unreadCount: number;
+    latestMessage: {
+      note: string;
+      createdAt: string;
+      authorName: string;
+      authorRole: string;
+    } | null;
+  }>;
+  recentActivities: Array<{
+    id: string;
+    type: 'chat_message' | 'pain_record' | 'exercise_check' | 'patient_created';
+    patientId: string;
+    patientName: string;
+    title: string;
+    description: string;
+    createdAt: string;
+  }>;
+  generatedAt: string;
+}
+
+function getStoredPhysioChatReadCounts() {
+  if (typeof window === 'undefined') return {} as Record<string, number>;
+
+  try {
+    const rawValue = localStorage.getItem(PHYSIO_CHAT_READ_STORAGE_KEY);
+    if (!rawValue) return {};
+    const parsed = JSON.parse(rawValue) as Record<string, number>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 type PatientFilterField = 'name' | 'login' | 'cpf';
 type PatientStatusFilter = 'ALL' | 'IN_PROGRESS' | 'COMPLETED' | 'DEMITIDO';
 
@@ -82,6 +135,7 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [deletePatientTarget, setDeletePatientTarget] = useState<DeletePatientTarget | null>(null);
   const [filterField, setFilterField] = useState<PatientFilterField>('name');
@@ -115,6 +169,10 @@ export default function DashboardPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const [notifications, setNotifications] = useState<PhysioNotificationsData | null>(null);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+  const [chatReadCounts, setChatReadCounts] = useState<Record<string, number>>(getStoredPhysioChatReadCounts);
 
   const fetchPatients = async () => {
     try {
@@ -135,6 +193,39 @@ export default function DashboardPage() {
       setIsLoading(false);
     }
   };
+
+  const fetchNotifications = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    try {
+      if (!silent) {
+        setIsLoadingNotifications(true);
+        setNotificationsError('');
+      }
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient-dashboard/physio/notifications`, {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao carregar notificacoes');
+      }
+
+      setNotifications(data);
+    } catch (err) {
+      if (!silent) {
+        setNotificationsError(err instanceof Error ? err.message : 'Erro ao carregar notificacoes');
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingNotifications(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -164,6 +255,38 @@ export default function DashboardPage() {
 
     loadPatients();
   }, [user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchNotifications();
+    }, 0);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      void fetchNotifications({ silent: true });
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [user, fetchNotifications]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleReadUpdated = () => {
+      setChatReadCounts(getStoredPhysioChatReadCounts());
+    };
+
+    window.addEventListener(PHYSIO_CHAT_READ_EVENT, handleReadUpdated);
+
+    return () => {
+      window.removeEventListener(PHYSIO_CHAT_READ_EVENT, handleReadUpdated);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -382,10 +505,66 @@ export default function DashboardPage() {
     return colors[index % colors.length];
   };
 
+  const formatNotificationDate = (date: string) => {
+    return new Date(date).toLocaleString('pt-BR');
+  };
+
+  const getActivityAccent = (
+    type: PhysioNotificationsData['recentActivities'][number]['type'],
+  ) => {
+    if (type === 'chat_message') {
+      return {
+        bg: 'bg-[#E5F5FF]',
+        border: 'border-[#CBE9FB]',
+        text: 'text-[#096196]',
+      };
+    }
+
+    if (type === 'pain_record') {
+      return {
+        bg: 'bg-[#FFF5E8]',
+        border: 'border-[#FAD9A7]',
+        text: 'text-[#C46A00]',
+      };
+    }
+
+    if (type === 'exercise_check') {
+      return {
+        bg: 'bg-[#EAFBF1]',
+        border: 'border-[#BDE8CC]',
+        text: 'text-[#1F8A4C]',
+      };
+    }
+
+    return {
+      bg: 'bg-[#F3F7FB]',
+      border: 'border-[#D7E6F3]',
+      text: 'text-[#4F6B82]',
+    };
+  };
+
+  const getNotificationUnreadCount = (
+    notification: PhysioNotificationsData['unreadMessages'][number],
+  ) => {
+    return Math.max(0, notification.unreadCount - (chatReadCounts[notification.patientId] ?? 0));
+  };
+
   const totalPatients = patients.length;
   const inProgressPatients = patients.filter(p => p.status === 'IN_PROGRESS').length;
   const completedPatients = patients.filter(p => p.status === 'COMPLETED').length;
   const dismissedPatients = patients.filter(p => p.status === 'DEMITIDO').length;
+  const pendingMessageNotifications = notifications
+    ? notifications.unreadMessages
+        .map((notification) => ({
+          ...notification,
+          effectiveUnreadCount: getNotificationUnreadCount(notification),
+        }))
+        .filter((notification) => notification.effectiveUnreadCount > 0)
+    : [];
+  const unreadNotificationsCount = pendingMessageNotifications.reduce(
+    (sum, notification) => sum + notification.effectiveUnreadCount,
+    0,
+  );
   const normalizedFilterValue = filterValue.trim().toLowerCase();
   const normalizedCpfFilter = filterValue.replace(/\D/g, '');
   const filteredPatients = patients.filter((patient) => {
@@ -416,6 +595,27 @@ export default function DashboardPage() {
     return null;
   }
 
+  const handleOpenPatientChat = (
+    notification: PhysioNotificationsData['unreadMessages'][number],
+  ) => {
+    if (typeof window !== 'undefined') {
+      const nextReadCounts = {
+        ...chatReadCounts,
+        [notification.patientId]: notification.unreadCount,
+      };
+
+      localStorage.setItem(PHYSIO_CHAT_READ_STORAGE_KEY, JSON.stringify(nextReadCounts));
+      setChatReadCounts(nextReadCounts);
+      window.dispatchEvent(
+        new CustomEvent(PHYSIO_CHAT_OPEN_EVENT, {
+          detail: { patientId: notification.patientId },
+        }),
+      );
+    }
+
+    setShowNotificationsModal(false);
+  };
+
   return (
     <main className="min-h-screen bg-[#E5F5FF]">
       <header className="bg-white shadow-sm border-b border-[#CBE9FB]">
@@ -434,12 +634,32 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center space-x-4 sm:space-x-6 w-full sm:w-auto justify-between sm:justify-end mt-4 sm:mt-0">
-              <button
-                onClick={() => setShowModal(true)}
-                className="bg-[#096196] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0B78B7] hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base"
-              >
-                Cadastrar Paciente
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    setShowNotificationsModal(true);
+                    void fetchNotifications();
+                  }}
+                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#CBE9FB] bg-white text-[#096196] shadow-sm transition-all duration-200 hover:bg-[#E5F5FF] hover:shadow-lg"
+                  title="Abrir central de notificacoes"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadNotificationsCount > 0 ? (
+                    <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                    </span>
+                  ) : null}
+                </button>
+
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="bg-[#096196] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0B78B7] hover:shadow-lg transition-all duration-200 shrink-0 text-sm sm:text-base"
+                >
+                  Cadastrar Paciente
+                </button>
+              </div>
 
               <div className="flex items-center space-x-3 sm:space-x-4 border-l border-[#CBE9FB] pl-4 sm:pl-6 shrink-0">
                 <div className="text-right hidden lg:block">
@@ -685,6 +905,220 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {showNotificationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-[#CBE9FB] bg-white p-6 shadow-2xl">
+            <div className="flex flex-col gap-4 border-b border-[#DCEFFC] pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#E5F5FF] text-[#096196]">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-[#096196]">Central de Notificacoes</h3>
+                    <p className="mt-1 text-sm text-[#3A6C89]">
+                      Acompanhe mensagens, atividades recentes e resumo geral do sistema.
+                    </p>
+                  </div>
+                </div>
+                {notifications?.generatedAt ? (
+                  <p className="mt-3 text-xs text-[#3A6C89]">
+                    Ultima atualizacao: {formatNotificationDate(notifications.generatedAt)}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => void fetchNotifications()}
+                  className="rounded-lg border border-[#CBE9FB] bg-white px-4 py-2 text-sm font-semibold text-[#096196] transition-all hover:bg-[#E5F5FF]"
+                >
+                  Atualizar
+                </button>
+                <button
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="rounded-lg bg-[#096196] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#0B78B7]"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+
+            {notificationsError ? (
+              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {notificationsError}
+              </div>
+            ) : null}
+
+            {isLoadingNotifications && !notifications ? (
+              <div className="py-16 text-center">
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-[#096196]"></div>
+                <p className="mt-4 text-sm text-[#3A6C89]">Carregando notificacoes...</p>
+              </div>
+            ) : notifications ? (
+              <div className="mt-6 space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
+                    <p className="text-sm font-medium text-[#3A6C89]">Mensagens nao lidas</p>
+                    <p className="mt-2 text-3xl font-bold text-[#096196]">
+                      {unreadNotificationsCount}
+                    </p>
+                    <p className="mt-1 text-xs text-[#3A6C89]">No chat dos pacientes</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
+                    <p className="text-sm font-medium text-[#3A6C89]">Pacientes com alerta</p>
+                    <p className="mt-2 text-3xl font-bold text-[#096196]">
+                      {pendingMessageNotifications.length}
+                    </p>
+                    <p className="mt-1 text-xs text-[#3A6C89]">Com mensagens para ler</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
+                    <p className="text-sm font-medium text-[#3A6C89]">Pacientes ativos</p>
+                    <p className="mt-2 text-3xl font-bold text-[#096196]">
+                      {notifications.summary.inProgressPatients}
+                    </p>
+                    <p className="mt-1 text-xs text-[#3A6C89]">
+                      {notifications.summary.totalPatients} pacientes no total
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#CBE9FB] bg-[#F8FCFF] p-4">
+                    <p className="text-sm font-medium text-[#3A6C89]">Finalizados e demitidos</p>
+                    <p className="mt-2 text-3xl font-bold text-[#096196]">
+                      {notifications.summary.completedPatients + notifications.summary.demitidoPatients}
+                    </p>
+                    <p className="mt-1 text-xs text-[#3A6C89]">
+                      {notifications.summary.completedPatients} finalizados • {notifications.summary.demitidoPatients} demitidos
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
+                  <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
+                    <div className="flex items-center justify-between gap-3 border-b border-[#E5F2FB] pb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-[#096196]">Mensagens Pendentes</h4>
+                        <p className="mt-1 text-sm text-[#3A6C89]">
+                          Pacientes com mensagens aguardando leitura.
+                        </p>
+                      </div>
+                      <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#096196] px-2 py-1 text-xs font-bold text-white">
+                        {unreadNotificationsCount}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {pendingMessageNotifications.length === 0 ? (
+                        <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] px-4 py-5 text-sm text-[#3A6C89]">
+                          Nenhuma mensagem pendente no momento.
+                        </div>
+                      ) : (
+                        pendingMessageNotifications.map((notification) => (
+                          <div
+                            key={notification.patientId}
+                            className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] p-4"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-base font-bold text-[#096196]">
+                                    {notification.patientName}
+                                  </p>
+                                  <span className="inline-flex items-center rounded-full bg-[#096196] px-2 py-0.5 text-[10px] font-bold text-white">
+                                    {notification.effectiveUnreadCount} nova{notification.effectiveUnreadCount > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-xs text-[#3A6C89]">
+                                  {notification.condition} • Fase {notification.phase}
+                                  {notification.loginCode ? ` • Login ${notification.loginCode}` : ''}
+                                </p>
+                                {notification.latestMessage ? (
+                                  <>
+                                    <p className="mt-3 text-sm text-[#096196]">
+                                      {notification.latestMessage.note}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-[#3A6C89]">
+                                      {notification.latestMessage.authorName} • {formatNotificationDate(notification.latestMessage.createdAt)}
+                                    </p>
+                                  </>
+                                ) : null}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPatientChat(notification)}
+                                className="inline-flex items-center justify-center rounded-lg bg-[#096196] px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-[#0B78B7]"
+                              >
+                                Abrir Chat
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-[#CBE9FB] bg-white p-5">
+                    <div className="border-b border-[#E5F2FB] pb-4">
+                      <h4 className="text-lg font-bold text-[#096196]">Atividades Recentes</h4>
+                      <p className="mt-1 text-sm text-[#3A6C89]">
+                        Ultimos eventos relevantes dos pacientes.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {notifications.recentActivities.length === 0 ? (
+                        <div className="rounded-xl border border-[#DCEFFC] bg-[#F8FCFF] px-4 py-5 text-sm text-[#3A6C89]">
+                          Nenhuma atividade recente encontrada.
+                        </div>
+                      ) : (
+                        notifications.recentActivities.map((activity) => {
+                          const accent = getActivityAccent(activity.type);
+
+                          return (
+                            <div
+                              key={activity.id}
+                              className={`rounded-xl border p-4 ${accent.bg} ${accent.border}`}
+                            >
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <p className={`text-sm font-bold ${accent.text}`}>
+                                    {activity.title}
+                                  </p>
+                                  <p className="mt-1 text-sm text-[#096196]">
+                                    {activity.patientName}
+                                  </p>
+                                  <p className="mt-2 text-xs text-[#3A6C89]">
+                                    {activity.description}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-[11px] text-[#3A6C89]">
+                                    {formatNotificationDate(activity.createdAt)}
+                                  </p>
+                                  <Link
+                                    href={`/dashboard/patient/${activity.patientId}`}
+                                    onClick={() => setShowNotificationsModal(false)}
+                                    className="mt-2 inline-flex text-[11px] font-semibold text-[#096196] hover:text-[#0B78B7]"
+                                  >
+                                    Ver paciente
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

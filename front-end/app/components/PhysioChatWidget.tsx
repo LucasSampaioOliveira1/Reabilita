@@ -60,6 +60,8 @@ type PhysioChatWidgetProps = {
 const CHAT_OPEN_STORAGE_KEY = 'physio-chat:is-open';
 const CHAT_PATIENT_STORAGE_KEY = 'physio-chat:selected-patient';
 const CHAT_READ_STORAGE_KEY = 'physio-chat:read-counts';
+const PHYSIO_CHAT_OPEN_EVENT = 'physio-chat:open-patient';
+const PHYSIO_CHAT_READ_EVENT = 'physio-chat:read-updated';
 
 function getPhysioAuth(): PhysioAuth | null {
   if (typeof window === 'undefined') return null;
@@ -145,6 +147,14 @@ export default function PhysioChatWidget({
         [patientId]: messageCount,
       };
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent(PHYSIO_CHAT_READ_EVENT, {
+          detail: { patientId, messageCount },
+        }),
+      );
+    }
   }, []);
 
   const loadChatList = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -301,6 +311,27 @@ export default function PhysioChatWidget({
     if (typeof window === 'undefined') return;
     localStorage.setItem(CHAT_READ_STORAGE_KEY, JSON.stringify(readCounts));
   }, [readCounts]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOpenPatient = (event: Event) => {
+      const customEvent = event as CustomEvent<{ patientId?: string }>;
+      const patientId = customEvent.detail?.patientId;
+
+      if (!patientId) return;
+
+      setSelectedPatientId(patientId);
+      setConversation(null);
+      setIsOpen(true);
+    };
+
+    window.addEventListener(PHYSIO_CHAT_OPEN_EVENT, handleOpenPatient as EventListener);
+
+    return () => {
+      window.removeEventListener(PHYSIO_CHAT_OPEN_EVENT, handleOpenPatient as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

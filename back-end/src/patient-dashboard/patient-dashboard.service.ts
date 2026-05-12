@@ -505,6 +505,235 @@ export class PatientDashboardService {
     });
   }
 
+  async getPhysioNotifications(user: JwtUser) {
+    this.ensurePhysio(user);
+
+    const [
+      patients,
+      patientMessageCounts,
+      latestInteractions,
+      recentPatientMessages,
+      recentPainRecords,
+      recentExerciseChecks,
+    ] = await Promise.all([
+      this.prisma.patient.findMany({
+        select: {
+          id: true,
+          condition: true,
+          phase: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: {
+              name: true,
+              loginCode: true,
+            },
+          },
+        },
+      }),
+      this.prisma.patientInteraction.groupBy({
+        by: ['patientId'],
+        where: {
+          author: {
+            is: { role: 'patient' },
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.patientInteraction.findMany({
+        distinct: ['patientId'],
+        orderBy: [{ patientId: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          patient: {
+            select: {
+              id: true,
+              condition: true,
+              phase: true,
+              user: {
+                select: {
+                  name: true,
+                  loginCode: true,
+                },
+              },
+            },
+          },
+          author: {
+            select: {
+              name: true,
+              role: true,
+            },
+          },
+        },
+      }),
+      this.prisma.patientInteraction.findMany({
+        where: {
+          author: {
+            is: { role: 'patient' },
+          },
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      this.prisma.painRecord.findMany({
+        include: {
+          patient: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { date: 'desc' },
+        take: 8,
+      }),
+      this.prisma.patientExerciseCheck.findMany({
+        where: {
+          completed: true,
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+          exercise: {
+            select: {
+              title: true,
+            },
+          },
+        },
+        orderBy: { date: 'desc' },
+        take: 8,
+      }),
+    ]);
+
+    const messageCountMap = new Map(
+      patientMessageCounts.map((item) => [item.patientId, item._count._all]),
+    );
+    const latestInteractionMap = new Map(
+      latestInteractions.map((item) => [item.patientId, item]),
+    );
+
+    const unreadMessages = patients
+      .map((patient) => {
+        const latestInteraction = latestInteractionMap.get(patient.id);
+
+        return {
+          patientId: patient.id,
+          patientName: patient.user.name,
+          loginCode: patient.user.loginCode,
+          condition: patient.condition,
+          phase: patient.phase,
+          status: patient.status,
+          unreadCount: messageCountMap.get(patient.id) ?? 0,
+          latestMessage: latestInteraction
+            ? {
+                note: latestInteraction.note,
+                createdAt: latestInteraction.createdAt,
+                authorName: latestInteraction.author.name,
+                authorRole: latestInteraction.author.role,
+              }
+            : null,
+        };
+      })
+      .filter((item) => item.unreadCount > 0)
+      .sort((a, b) => {
+        const aTime = a.latestMessage ? new Date(a.latestMessage.createdAt).getTime() : 0;
+        const bTime = b.latestMessage ? new Date(b.latestMessage.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    const recentActivities = [
+      ...recentPatientMessages.map((message) => ({
+        id: `message-${message.id}`,
+        type: 'chat_message',
+        patientId: message.patientId,
+        patientName: message.patient.user.name,
+        title: 'Nova mensagem do paciente',
+        description: message.note,
+        createdAt: message.createdAt,
+      })),
+      ...recentPainRecords.map((record) => ({
+        id: `pain-${record.id}`,
+        type: 'pain_record',
+        patientId: record.patientId,
+        patientName: record.patient.user.name,
+        title: 'Novo registro de dor (EVA)',
+        description: `Paciente informou EVA ${record.painLevel}.`,
+        createdAt: record.date,
+      })),
+      ...recentExerciseChecks.map((check) => ({
+        id: `exercise-${check.id}`,
+        type: 'exercise_check',
+        patientId: check.patientId,
+        patientName: check.patient.user.name,
+        title: 'Exercicio concluido',
+        description: `Paciente marcou "${check.exercise.title}" como concluido.`,
+        createdAt: check.date,
+      })),
+      ...patients
+        .slice()
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 6)
+        .map((patient) => ({
+          id: `patient-${patient.id}`,
+          type: 'patient_created',
+          patientId: patient.id,
+          patientName: patient.user.name,
+          title: 'Paciente cadastrado',
+          description: `${patient.user.name} foi adicionado ao sistema.`,
+          createdAt: patient.createdAt,
+        })),
+    ]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 14);
+
+    const inProgressPatients = patients.filter((patient) => patient.status === 'IN_PROGRESS').length;
+    const completedPatients = patients.filter((patient) => patient.status === 'COMPLETED').length;
+    const demitidoPatients = patients.filter((patient) => patient.status === 'DEMITIDO').length;
+    const totalUnreadMessages = unreadMessages.reduce(
+      (sum, notification) => sum + notification.unreadCount,
+      0,
+    );
+
+    return {
+      summary: {
+        totalPatients: patients.length,
+        inProgressPatients,
+        completedPatients,
+        demitidoPatients,
+        totalUnreadMessages,
+        patientsWithUnreadMessages: unreadMessages.length,
+      },
+      unreadMessages,
+      recentActivities,
+      generatedAt: new Date(),
+    };
+  }
+
   async getPatientReport(user: JwtUser, patientId: string) {
     this.ensurePhysio(user);
     const dashboard = await this.getPatientDashboardById(patientId);
